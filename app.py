@@ -57,7 +57,11 @@ def login_required(f):
     """Decorator to require login for protected routes"""
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
-            return redirect(url_for('login'))
+            # Check if this is an API route
+            if request.path.startswith('/api/'):
+                return jsonify({'error': 'Authentication required'}), 401
+            else:
+                return redirect(url_for('login'))
         return f(*args, **kwargs)
     decorated_function.__name__ = f.__name__
     return decorated_function

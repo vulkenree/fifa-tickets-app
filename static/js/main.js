@@ -72,6 +72,10 @@ async function loadCurrentUser() {
         currentUserId = user.id;
     } catch (error) {
         console.error('Error loading current user:', error);
+        // If authentication fails, redirect to login
+        if (error.message.includes('Authentication required')) {
+            window.location.href = '/login';
+        }
     }
 }
 
@@ -83,6 +87,10 @@ async function loadTickets() {
         renderTickets();
     } catch (error) {
         console.error('Error loading tickets:', error);
+        // If authentication fails, redirect to login
+        if (error.message.includes('Authentication required')) {
+            window.location.href = '/login';
+        }
     }
 }
 
