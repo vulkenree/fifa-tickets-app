@@ -23,6 +23,7 @@ with app.app_context():
         db.session.add(admin)
         db.session.commit()
         print('✅ Default admin user created: username=admin, password=admin123')
+        print('✅ 🚀 Starting application server on port $PORT...')
     else:
         print('✅ Database already initialized')
 "
