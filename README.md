@@ -10,7 +10,7 @@ A simple, lightweight web application for managing FIFA 2026 ticket purchases. U
 - **Data Validation**: Match number format validation (M + digits)
 - **User Isolation**: Each user only sees their own tickets
 - **Search**: Search through tickets by various fields
-- **Fast Package Management**: Uses `uv` for lightning-fast dependency management
+- **Simple Deployment**: Easy to deploy with Docker and pip
 
 ## Ticket Fields
 
@@ -29,33 +29,14 @@ A simple, lightweight web application for managing FIFA 2026 ticket purchases. U
 - **Database**: SQLite
 - **Frontend**: HTML, CSS, JavaScript
 - **Authentication**: Session-based
-- **Package Manager**: uv (10-100x faster than pip)
+- **Package Manager**: pip (standard Python package manager)
 
 ## Quick Start
 
 ### Prerequisites
 
 - Python 3.8 or higher
-- uv (modern Python package manager)
-
-### Install uv
-
-If you don't have uv installed:
-
-**macOS/Linux:**
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
-
-**Windows:**
-```powershell
-powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
-```
-
-**Or with pip:**
-```bash
-pip install uv
-```
+- pip (Python package manager)
 
 ### Installation
 
@@ -64,14 +45,14 @@ pip install uv
    cd fifa_tickets_app
    ```
 
-2. **Install dependencies with uv**
+2. **Install dependencies**
    ```bash
-   uv sync
+   pip install -r requirements.txt
    ```
 
 3. **Run the application**
    ```bash
-   uv run python app.py
+   python app.py
    ```
 
 4. **Access the application**
@@ -154,8 +135,6 @@ fifa_tickets_app/
 ├── Dockerfile            # Docker configuration for Railway
 ├── gunicorn.conf.py      # Gunicorn configuration
 ├── requirements.txt      # Python dependencies
-├── pyproject.toml        # Modern Python project configuration (uv)
-├── uv.lock              # Lock file for reproducible installs
 ├── README.md            # This file
 ├── .gitignore           # Git ignore file
 ├── static/
@@ -170,14 +149,14 @@ fifa_tickets_app/
     └── dashboard.html   # Main ticket management page
 ```
 
-## Benefits of Using uv
+## Benefits of This Setup
 
-- **🚀 Lightning Fast**: 10-100x faster than pip for dependency resolution
-- **🔒 Reproducible**: Lock file ensures identical installs across environments
-- **📦 Modern**: Uses pyproject.toml standard instead of requirements.txt
-- **🌍 Universal**: Works on all platforms with consistent behavior
-- **⚡ Built-in Virtual Environment**: No need for separate venv management
-- **🔄 Easy Updates**: Simple commands for adding/removing dependencies
+- **🚀 Simple**: Easy to understand and deploy
+- **🔒 Reliable**: Uses standard Python tools (pip, gunicorn)
+- **📦 Lightweight**: Minimal dependencies for fast deployment
+- **🌍 Universal**: Works on all platforms with standard Python
+- **⚡ Fast Deployment**: Quick setup on Railway and other platforms
+- **🔄 Easy Maintenance**: Standard Python project structure
 
 ## Security Notes
 
