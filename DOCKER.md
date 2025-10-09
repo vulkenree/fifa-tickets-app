@@ -16,14 +16,20 @@ This guide explains how to deploy the FIFA 2026 Ticket Management App using Dock
 
 ## Quick Start
 
-The fastest way to run the app in Docker:
+The fastest way to run the app in Docker with PostgreSQL:
 
 ```bash
-# Build and run with docker-compose
+# Build and run with docker-compose (includes PostgreSQL)
 docker-compose up -d
 
 # Access the app at http://localhost:8000
+# PostgreSQL runs automatically in a separate container
 ```
+
+The docker-compose setup includes:
+- **Web App**: Flask application with Gunicorn
+- **PostgreSQL**: Database server (postgres:16-alpine)
+- **Persistent Storage**: Data survives container restarts
 
 ## Building the Docker Image
 
@@ -101,7 +107,7 @@ docker rm fifa-tickets-app
 | `FLASK_ENV` | No | `production` | Flask environment (production/development) |
 | `SECRET_KEY` | **Yes** | - | Secret key for session management and security |
 | `PORT` | No | `8000` | Port the application listens on |
-| `DATABASE_URL` | No | `sqlite:////app/data/fifa_tickets.db` | Database connection string |
+| `DATABASE_URL` | **Yes** | - | PostgreSQL connection string (format: `postgresql://user:pass@host:port/dbname`) |
 
 ### Setting Environment Variables
 

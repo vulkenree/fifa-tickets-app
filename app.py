@@ -13,7 +13,20 @@ app = Flask(__name__)
 
 # Production configuration
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', secrets.token_hex(32))
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///fifa_tickets.db')
+
+# Smart database configuration
+database_url = os.environ.get('DATABASE_URL')
+if database_url:
+    # Fix postgres:// to postgresql:// (Railway/Heroku compatibility)
+    if database_url.startswith('postgres://'):
+        database_url = database_url.replace('postgres://', 'postgresql://', 1)
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+    print(f"✅ Using PostgreSQL database")
+else:
+    # Default to SQLite for local development
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///instance/fifa_tickets.db'
+    print(f"✅ Using SQLite database (local development)")
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Security headers

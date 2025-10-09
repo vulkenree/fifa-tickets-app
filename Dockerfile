@@ -11,13 +11,14 @@ WORKDIR /app
 # Copy dependency files
 COPY pyproject.toml ./
 
-# Install production dependencies
+# Install production dependencies including PostgreSQL support
 RUN uv pip install --system --no-cache \
     "flask>=3.1.2" \
     "flask-sqlalchemy>=3.1.1" \
     "werkzeug>=3.1.3" \
     "python-dotenv>=1.1.1" \
-    "gunicorn>=21.2.0"
+    "gunicorn>=21.2.0" \
+    "psycopg2-binary>=2.9.9"
 
 # Stage 2: Production runtime
 FROM python:3.11-slim

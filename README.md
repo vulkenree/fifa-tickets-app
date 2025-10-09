@@ -94,6 +94,38 @@ docker-compose up -d
 # Access at http://localhost:8000
 ```
 
+## Database
+
+The app supports both SQLite and PostgreSQL:
+
+- **Local Development**: SQLite (default, no setup required)
+  - Database file: `./instance/fifa_tickets.db`
+  - Perfect for development and small teams
+  
+- **Production**: PostgreSQL (recommended for deployments)
+  - Persistent data across redeployments
+  - Better performance and scalability
+  - Built-in backup and recovery
+
+### Database Configuration
+
+The app automatically detects which database to use:
+
+```bash
+# SQLite (Default - Local Development)
+# No configuration needed
+uv run python app.py
+
+# PostgreSQL (Production)
+# Set DATABASE_URL environment variable
+export DATABASE_URL="postgresql://user:pass@host:port/dbname"
+uv run python app.py
+```
+
+**Environment Variables:**
+- `DATABASE_URL`: PostgreSQL connection string (optional)
+- `SECRET_KEY`: Secret key for sessions (required for production)
+
 ## Usage
 
 ### First Time Setup

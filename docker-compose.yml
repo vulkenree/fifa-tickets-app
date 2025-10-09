@@ -1,4 +1,22 @@
 services:
+  # PostgreSQL Database
+  db:
+    image: postgres:16-alpine
+    container_name: fifa-tickets-db
+    environment:
+      POSTGRES_DB: fifa_tickets
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Web Application
   web:
     build:
       context: .
@@ -10,9 +28,10 @@ services:
       - FLASK_ENV=production
       - SECRET_KEY=${SECRET_KEY:-change-this-secret-key-in-production}
       - PORT=8000
-    volumes:
-      # Persist database
-      - ./data:/app/data
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/fifa_tickets
+    depends_on:
+      db:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -25,5 +44,5 @@ services:
       - "com.fifa-tickets.version=1.0.0"
 
 volumes:
-  data:
+  postgres_data:
     driver: local
