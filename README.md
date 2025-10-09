@@ -8,16 +8,16 @@ A simple, lightweight web application for managing FIFA 2026 ticket purchases. U
 - **Ticket Management**: Add, edit, delete, and view tickets
 - **Modern UI**: Responsive design with clean, modern interface
 - **Data Validation**: Match number format validation (M + digits)
-- **User Isolation**: Each user only sees their own tickets
-- **Search**: Search through tickets by various fields
-- **Simple Deployment**: Easy to deploy with Docker and pip
+- **View All Tickets**: All users can view each other's tickets
+- **Filtering & Sorting**: Search and sort tickets by various fields
+- **Simple Setup**: Easy to run locally for development and testing
 
 ## Ticket Fields
 
 - **Name**: Ticket holder name
 - **Match Number**: Format M + digits (e.g., M1, M23)
-- **Date**: Match date
-- **Venue**: Stadium/venue name
+- **Date**: Match date (June 11, 2026 - July 19, 2026)
+- **Venue**: FIFA 2026 World Cup venue (dropdown selection)
 - **Category**: Ticket category (Category 1-4, VIP)
 - **Quantity**: Number of tickets
 - **Ticket Info**: Additional information (optional)
@@ -75,7 +75,8 @@ A simple, lightweight web application for managing FIFA 2026 ticket purchases. U
 2. **Add tickets** using the "Add New Ticket" button
 3. **Edit tickets** by clicking the "Edit" button in the table
 4. **Delete tickets** by clicking the "Delete" button
-5. **Search tickets** using the search box
+5. **Filter tickets** using the filter controls at the top
+6. **Sort tickets** by clicking column headers
 
 ### Match Number Format
 
@@ -83,47 +84,15 @@ Match numbers must follow the format: **M** followed by digits
 - ✅ Valid: M1, M23, M100
 - ❌ Invalid: 1M, M, M1A, match1
 
-## Railway Deployment
+### Date Range
 
-### Quick Deploy to Railway
+Tickets can only be added for the FIFA 2026 World Cup period:
+- **Start Date**: June 11, 2026
+- **End Date**: July 19, 2026
 
-1. **Push code to GitHub**
-   - Ensure your code is in a GitHub repository
+### Venues
 
-2. **Connect repository to Railway**
-   - Go to [railway.app](https://railway.app)
-   - Sign in with GitHub
-   - Click "Deploy from GitHub repo"
-   - Select your repository
-
-3. **Set environment variables**
-   - In Railway dashboard, go to Variables tab
-   - Add these variables:
-     - `FLASK_ENV=production`
-     - `SECRET_KEY=your-secret-key-here` (generate a secure key)
-
-4. **Deploy**
-   - Railway will automatically detect the Dockerfile
-   - No additional configuration needed
-   - Your app will be live in minutes!
-
-5. **Health check endpoint**: `/health`
-
-### Railway Configuration
-
-In Railway dashboard:
-- **Build**: Automatically detected (Dockerfile)
-- **Start Command**: (leave empty, uses CMD from Dockerfile)
-- **Health Check Path**: `/health`
-- **Environment Variables**:
-  - `FLASK_ENV=production`
-  - `SECRET_KEY=(generate secure key)`
-
-
-## Environment Variables
-
-- `SECRET_KEY`: Secret key for session management (required for production)
-- `DATABASE_URL`: Database URL (optional, defaults to SQLite)
+The app includes all 16 FIFA 2026 World Cup venues across the US, Mexico, and Canada.
 
 ## File Structure
 
@@ -131,9 +100,6 @@ In Railway dashboard:
 fifa_tickets_app/
 ├── app.py                 # Main Flask application
 ├── models.py             # Database models
-├── start.sh              # Startup script for Railway
-├── Dockerfile            # Docker configuration for Railway
-├── gunicorn.conf.py      # Gunicorn configuration
 ├── requirements.txt      # Python dependencies
 ├── README.md            # This file
 ├── .gitignore           # Git ignore file
@@ -151,18 +117,18 @@ fifa_tickets_app/
 
 ## Benefits of This Setup
 
-- **🚀 Simple**: Easy to understand and deploy
-- **🔒 Reliable**: Uses standard Python tools (pip, gunicorn)
-- **📦 Lightweight**: Minimal dependencies for fast deployment
+- **🚀 Simple**: Easy to understand and run locally
+- **🔒 Reliable**: Uses standard Python tools (pip, Flask dev server)
+- **📦 Lightweight**: Minimal dependencies for fast setup
 - **🌍 Universal**: Works on all platforms with standard Python
-- **⚡ Fast Deployment**: Quick setup on Railway and other platforms
+- **⚡ Fast Development**: Quick setup for testing and development
 - **🔄 Easy Maintenance**: Standard Python project structure
 
 ## Security Notes
 
 - **Change the default admin password** after first login
-- **Use a strong SECRET_KEY** in production
-- **Consider using HTTPS** in production
+- **Use a strong SECRET_KEY** if deploying (set as environment variable)
+- **Consider using HTTPS** if deploying to production
 - **Regular backups** of the SQLite database
 
 ## Troubleshooting
@@ -178,11 +144,14 @@ fifa_tickets_app/
 3. **Permission errors**
    - Make sure you have write permissions in the app directory
 
+4. **Module not found errors**
+   - Ensure all dependencies are installed: `pip install -r requirements.txt`
+
 ### Getting Help
 
 - Check the console output for error messages
 - Ensure all dependencies are installed
-- Verify Python version compatibility
+- Verify Python version compatibility (3.8+)
 
 ## License
 
