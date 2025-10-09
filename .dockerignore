@@ -1,0 +1,36 @@
+# Ignore git files
+.git
+.gitignore
+
+# Ignore Python cache
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# Ignore virtual environments
+venv/
+env/
+ENV/
+.venv/
+.python-version
+
+# Ignore IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+
+# Ignore any uv files (just in case)
+uv.lock
+pyproject.toml
+
+# Ignore any old deployment files
+docker-compose.yml
+.env
