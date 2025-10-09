@@ -102,30 +102,41 @@ Match numbers must follow the format: **M** followed by digits
 - ✅ Valid: M1, M23, M100
 - ❌ Invalid: 1M, M, M1A, match1
 
-## Deployment
+## Railway Deployment
 
-### 🚀 Quick Deploy (Recommended)
+### Quick Deploy to Railway
 
-**Railway** - Zero configuration deployment:
-1. Go to [railway.app](https://railway.app)
-2. Connect your GitHub repository
-3. Set environment variables: `FLASK_ENV=production`, `SECRET_KEY=your-secret-key`
-4. Deploy automatically!
+1. **Push code to GitHub**
+   - Ensure your code is in a GitHub repository
 
-**Render** - Free tier available:
-1. Go to [render.com](https://render.com)
-2. Create Web Service from GitHub
-3. Build Command: `uv sync`
-4. Start Command: `./start.sh`
+2. **Connect repository to Railway**
+   - Go to [railway.app](https://railway.app)
+   - Sign in with GitHub
+   - Click "Deploy from GitHub repo"
+   - Select your repository
 
-### 📋 Full Deployment Guide
+3. **Set environment variables**
+   - In Railway dashboard, go to Variables tab
+   - Add these variables:
+     - `FLASK_ENV=production`
+     - `SECRET_KEY=your-secret-key-here` (generate a secure key)
 
-See [DEPLOYMENT.md](DEPLOYMENT.md) for comprehensive deployment instructions including:
-- Railway, Render, Heroku, DigitalOcean
-- Docker deployment
-- VPS/server setup
-- Security checklist
-- Monitoring and maintenance
+4. **Deploy**
+   - Railway will automatically detect the Dockerfile
+   - No additional configuration needed
+   - Your app will be live in minutes!
+
+5. **Health check endpoint**: `/health`
+
+### Railway Configuration
+
+In Railway dashboard:
+- **Build**: Automatically detected (Dockerfile)
+- **Start Command**: (leave empty, uses CMD from Dockerfile)
+- **Health Check Path**: `/health`
+- **Environment Variables**:
+  - `FLASK_ENV=production`
+  - `SECRET_KEY=(generate secure key)`
 
 
 ## Environment Variables
@@ -139,16 +150,21 @@ See [DEPLOYMENT.md](DEPLOYMENT.md) for comprehensive deployment instructions inc
 fifa_tickets_app/
 ├── app.py                 # Main Flask application
 ├── models.py             # Database models
+├── start.sh              # Startup script for Railway
+├── Dockerfile            # Docker configuration for Railway
+├── gunicorn.conf.py      # Gunicorn configuration
+├── requirements.txt      # Python dependencies
 ├── pyproject.toml        # Modern Python project configuration (uv)
 ├── uv.lock              # Lock file for reproducible installs
 ├── README.md            # This file
-├── Procfile             # Heroku deployment
 ├── .gitignore           # Git ignore file
 ├── static/
 │   ├── css/
 │   │   └── style.css    # Modern styling
-│   └── js/
-│       └── main.js      # Frontend logic
+│   ├── js/
+│   │   └── main.js      # Frontend logic
+│   └── images/
+│       └── logo.jpg     # App logo
 └── templates/
     ├── login.html       # Login page
     └── dashboard.html   # Main ticket management page

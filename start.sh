@@ -1,15 +1,10 @@
 #!/bin/bash
+set -e
 
-# FIFA 2026 Ticket App - Production Startup Script
+echo "Starting FIFA 2026 Ticket App..."
 
-echo "🏆 Starting FIFA 2026 Ticket App..."
-
-# Set production environment
-export FLASK_ENV=production
-
-# Initialize database if it doesn't exist
-echo "📊 Initializing database..."
-uv run python -c "
+# Initialize database
+python -c "
 from app import app, db, User
 with app.app_context():
     db.create_all()
@@ -18,13 +13,8 @@ with app.app_context():
         admin.set_password('admin123')
         db.session.add(admin)
         db.session.commit()
-        print('✅ Default admin user created: username=admin, password=admin123')
-        print('✅ 🚀 Starting application server on port $PORT...')
-
-    else:
-        print('✅ Database already initialized')
+        print('Admin user created')
 "
 
-# Start the application with gunicorn
-echo "🚀 Starting application server..."
-exec uv run gunicorn --config gunicorn.conf.py app:app
+# Start gunicorn with Railway's PORT
+exec gunicorn --bind 0.0.0.0:${PORT:-8000} --workers 2 --timeout 30 --access-logfile - --error-logfile - app:app
