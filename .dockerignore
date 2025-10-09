@@ -1,36 +1,54 @@
-# Ignore git files
+# Git files
 .git
 .gitignore
 
-# Ignore Python cache
+# Python cache
 __pycache__
 *.pyc
 *.pyo
 *.pyd
 .Python
 *.so
+*.egg
+*.egg-info
+dist
+build
 
-# Ignore virtual environments
-venv/
-env/
-ENV/
-.venv/
-.python-version
+# Virtual environments
+.venv
+venv
+env
+ENV
 
-# Ignore IDE files
-.vscode/
-.idea/
+# IDE files
+.vscode
+.idea
 *.swp
 *.swo
-
-# Ignore OS files
 .DS_Store
-Thumbs.db
 
-# Ignore any uv files (just in case)
-uv.lock
-pyproject.toml
-
-# Ignore any old deployment files
-docker-compose.yml
+# Development files
+*.md
+!README.md
 .env
+.env.local
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Documentation
+docs/
+DOCKER.md
+
+# Test files
+test_*.py
+tests/
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# Lock files (uv.lock is used in Dockerfile)
+# Keep pyproject.toml for reference

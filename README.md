@@ -84,6 +84,16 @@ pip install uv
      - Username: `admin`
      - Password: `admin123`
 
+## Docker Deployment
+
+For production deployment using Docker containers, see the comprehensive [Docker Deployment Guide](DOCKER.md).
+
+**Quick Docker Start:**
+```bash
+docker-compose up -d
+# Access at http://localhost:8000
+```
+
 ## Usage
 
 ### First Time Setup

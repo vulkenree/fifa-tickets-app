@@ -13,3 +13,6 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = []
+prod = [
+    "gunicorn>=21.2.0",
+]
