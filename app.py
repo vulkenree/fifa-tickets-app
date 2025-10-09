@@ -55,6 +55,15 @@ def index():
         return redirect(url_for('dashboard'))
     return redirect(url_for('login'))
 
+@app.route('/ping')
+def ping():
+    """Simple ping endpoint for Railway health checks"""
+    return jsonify({
+        'status': 'ok',
+        'message': 'FIFA 2026 Ticket App is running',
+        'timestamp': datetime.now().isoformat()
+    }), 200
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -132,13 +141,38 @@ def health_check():
         # Test database connection
         from sqlalchemy import text
         db.session.execute(text('SELECT 1'))
+        database_status = 'connected'
+    except Exception as e:
+        database_status = f'error: {str(e)}'
+    
+    # Always return 200 for basic health check
+    # Railway just needs to know the app is responding
+    return jsonify({
+        'status': 'healthy',
+        'timestamp': datetime.now().isoformat(),
+        'service': 'FIFA 2026 Ticket App',
+        'version': '1.0.0',
+        'database': database_status,
+        'port': os.environ.get('PORT', 'not_set'),
+        'environment': os.environ.get('FLASK_ENV', 'not_set')
+    }), 200
+
+@app.route('/health/detailed')
+def detailed_health_check():
+    """Detailed health check with database connectivity test"""
+    try:
+        # Test database connection
+        from sqlalchemy import text
+        db.session.execute(text('SELECT 1'))
         
         return jsonify({
             'status': 'healthy',
             'timestamp': datetime.now().isoformat(),
             'service': 'FIFA 2026 Ticket App',
             'version': '1.0.0',
-            'database': 'connected'
+            'database': 'connected',
+            'port': os.environ.get('PORT', 'not_set'),
+            'environment': os.environ.get('FLASK_ENV', 'not_set')
         }), 200
     except Exception as e:
         return jsonify({
@@ -146,7 +180,9 @@ def health_check():
             'timestamp': datetime.now().isoformat(),
             'service': 'FIFA 2026 Ticket App',
             'error': str(e),
-            'database': 'disconnected'
+            'database': 'disconnected',
+            'port': os.environ.get('PORT', 'not_set'),
+            'environment': os.environ.get('FLASK_ENV', 'not_set')
         }), 503
 
 @app.route('/api/tickets', methods=['GET'])
