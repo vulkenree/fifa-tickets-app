@@ -29,14 +29,33 @@ A simple, lightweight web application for managing FIFA 2026 ticket purchases. U
 - **Database**: SQLite
 - **Frontend**: HTML, CSS, JavaScript
 - **Authentication**: Session-based
-- **Package Manager**: pip (standard Python package manager)
+- **Package Manager**: uv (ultra-fast Python package manager)
 
 ## Quick Start
 
 ### Prerequisites
 
-- Python 3.8 or higher
-- pip (Python package manager)
+- Python 3.9 or higher
+- uv (ultra-fast Python package manager)
+
+### Install uv
+
+If you don't have uv installed:
+
+**macOS/Linux:**
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+**Windows:**
+```powershell
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+**Or with pip:**
+```bash
+pip install uv
+```
 
 ### Installation
 
@@ -45,14 +64,18 @@ A simple, lightweight web application for managing FIFA 2026 ticket purchases. U
    cd fifa_tickets_app
    ```
 
-2. **Install dependencies**
+2. **Install dependencies with uv**
    ```bash
-   pip install -r requirements.txt
+   uv sync
    ```
+   This will automatically:
+   - Create a virtual environment in `.venv/`
+   - Install all dependencies
+   - Create a lock file for reproducible installs
 
 3. **Run the application**
    ```bash
-   python app.py
+   uv run python app.py
    ```
 
 4. **Access the application**
@@ -100,9 +123,12 @@ The app includes all 16 FIFA 2026 World Cup venues across the US, Mexico, and Ca
 fifa_tickets_app/
 ├── app.py                 # Main Flask application
 ├── models.py             # Database models
-├── requirements.txt      # Python dependencies
+├── pyproject.toml        # Project configuration with dependencies
+├── uv.lock               # Lock file for reproducible installs
+├── requirements.txt      # Legacy pip format (generated from pyproject.toml)
 ├── README.md            # This file
 ├── .gitignore           # Git ignore file
+├── .venv/                # Virtual environment (created by uv)
 ├── static/
 │   ├── css/
 │   │   └── style.css    # Modern styling
@@ -115,14 +141,14 @@ fifa_tickets_app/
     └── dashboard.html   # Main ticket management page
 ```
 
-## Benefits of This Setup
+## Benefits of Using uv
 
-- **🚀 Simple**: Easy to understand and run locally
-- **🔒 Reliable**: Uses standard Python tools (pip, Flask dev server)
-- **📦 Lightweight**: Minimal dependencies for fast setup
-- **🌍 Universal**: Works on all platforms with standard Python
-- **⚡ Fast Development**: Quick setup for testing and development
-- **🔄 Easy Maintenance**: Standard Python project structure
+- **🚀 Lightning Fast**: 10-100x faster than pip for dependency resolution
+- **🔒 Reproducible**: Lock file ensures identical installs across environments
+- **📦 Modern**: Uses pyproject.toml standard
+- **🌍 Universal**: Works on all platforms with consistent behavior
+- **⚡ Built-in Virtual Environment**: No need for separate venv management
+- **🔄 Easy Updates**: Simple commands for adding/removing dependencies
 
 ## Security Notes
 
@@ -145,7 +171,8 @@ fifa_tickets_app/
    - Make sure you have write permissions in the app directory
 
 4. **Module not found errors**
-   - Ensure all dependencies are installed: `pip install -r requirements.txt`
+   - Ensure all dependencies are installed: `uv sync`
+   - Always run the app with: `uv run python app.py`
 
 ### Getting Help
 
