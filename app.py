@@ -125,6 +125,30 @@ def get_current_user():
         'username': user.username
     })
 
+@app.route('/health')
+def health_check():
+    """Health check endpoint for Railway and monitoring"""
+    try:
+        # Test database connection
+        from sqlalchemy import text
+        db.session.execute(text('SELECT 1'))
+        
+        return jsonify({
+            'status': 'healthy',
+            'timestamp': datetime.now().isoformat(),
+            'service': 'FIFA 2026 Ticket App',
+            'version': '1.0.0',
+            'database': 'connected'
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'status': 'unhealthy',
+            'timestamp': datetime.now().isoformat(),
+            'service': 'FIFA 2026 Ticket App',
+            'error': str(e),
+            'database': 'disconnected'
+        }), 503
+
 @app.route('/api/tickets', methods=['GET'])
 @login_required
 def get_tickets():
