@@ -1,15 +1,15 @@
 #!/bin/bash
 
-# FIFA 2026 Ticket App - Production Startup Script
+# FIFA 2026 Ticket App - Railway Startup Script
 
-echo "🏆 Starting FIFA 2026 Ticket App..."
+echo "🏆 Starting FIFA 2026 Ticket App on Railway..."
 
 # Set production environment
 export FLASK_ENV=production
 
 # Initialize database if it doesn't exist
 echo "📊 Initializing database..."
-uv run python -c "
+python -c "
 from app import app, db, User
 with app.app_context():
     db.create_all()
@@ -25,4 +25,4 @@ with app.app_context():
 
 # Start the application with gunicorn
 echo "🚀 Starting application server..."
-exec uv run gunicorn --config gunicorn.conf.py app:app
+exec gunicorn --bind 0.0.0.0:$PORT --workers 2 --timeout 30 app:app
