@@ -194,6 +194,10 @@ export default function DashboardPage() {
         aValue = a.ticket_category?.toString().toLowerCase() || '';
         bValue = b.ticket_category?.toString().toLowerCase() || '';
         break;
+      case 'ticket_info':
+        aValue = a.ticket_info?.toString().toLowerCase() || '';
+        bValue = b.ticket_info?.toString().toLowerCase() || '';
+        break;
       default:
         return 0;
     }
@@ -562,6 +566,12 @@ export default function DashboardPage() {
                       >
                         Price {sortColumn === 'ticket_price' && (sortDirection === 'asc' ? '↑' : '↓')}
                       </TableHead>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-gray-100 select-none" 
+                        onClick={() => handleSort('ticket_info')}
+                      >
+                        Ticket Info {sortColumn === 'ticket_info' && (sortDirection === 'asc' ? '↑' : '↓')}
+                      </TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -577,6 +587,9 @@ export default function DashboardPage() {
                         <TableCell>{ticket.quantity}</TableCell>
                         <TableCell>
                           {ticket.ticket_price ? `$${ticket.ticket_price.toFixed(2)}` : '-'}
+                        </TableCell>
+                        <TableCell>
+                          {ticket.ticket_info || '-'}
                         </TableCell>
                         <TableCell>
                           {canEditTicket(ticket) ? (
