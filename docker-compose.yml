@@ -7,7 +7,7 @@ services:
       - "8000:8000"
     environment:
       - FLASK_ENV=development
-      - DATABASE_URL=sqlite:///app/instance/app.db
+      - DATABASE_URL=sqlite:///tmp/app.db
       - SECRET_KEY=dev-secret-key-change-in-production
       - FRONTEND_URL=http://localhost:3000
     volumes:
