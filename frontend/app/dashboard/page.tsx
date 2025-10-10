@@ -43,6 +43,10 @@ export default function DashboardPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTicket, setEditingTicket] = useState<Ticket | null>(null);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
+  
+  // Sorting state
+  const [sortColumn, setSortColumn] = useState<string | null>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
   const form = useForm<TicketForm>({
     resolver: zodResolver(ticketSchema),
@@ -78,6 +82,16 @@ export default function DashboardPage() {
       form.setValue('match_number', match.match_number);
       form.setValue('date', match.date);
       form.setValue('venue', match.venue);
+    }
+  };
+
+  // Handle column sorting
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
     }
   };
 
@@ -130,6 +144,36 @@ export default function DashboardPage() {
     const matchesCategory = categoryFilter === 'all' || ticket.ticket_category === categoryFilter;
     
     return matchesSearch && matchesUser && matchesVenue && matchesCategory;
+  });
+
+  // Sort filtered tickets
+  const sortedTickets = [...filteredTickets].sort((a, b) => {
+    if (!sortColumn) return 0;
+    
+    let aValue, bValue;
+    
+    switch (sortColumn) {
+      case 'match_number':
+        aValue = parseInt(a.match_number.replace('M', ''));
+        bValue = parseInt(b.match_number.replace('M', ''));
+        break;
+      case 'date':
+        aValue = parseISO(a.date).getTime();
+        bValue = parseISO(b.date).getTime();
+        break;
+      case 'quantity':
+      case 'ticket_price':
+        aValue = a[sortColumn] || 0;
+        bValue = b[sortColumn] || 0;
+        break;
+      default:
+        aValue = a[sortColumn]?.toString().toLowerCase() || '';
+        bValue = b[sortColumn]?.toString().toLowerCase() || '';
+    }
+    
+    if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+    if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+    return 0;
   });
 
   const handleDeleteTicket = async (id: number) => {
@@ -440,10 +484,10 @@ export default function DashboardPage() {
         {/* Tickets Table */}
         <Card>
           <CardHeader>
-            <CardTitle>Tickets ({filteredTickets.length})</CardTitle>
+            <CardTitle>Tickets ({sortedTickets.length})</CardTitle>
           </CardHeader>
           <CardContent>
-            {filteredTickets.length === 0 ? (
+            {sortedTickets.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-gray-500">No tickets found. Add your first ticket!</p>
               </div>
@@ -452,19 +496,59 @@ export default function DashboardPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>User</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Match</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Venue</TableHead>
-                      <TableHead>Category</TableHead>
-                      <TableHead>Quantity</TableHead>
-                      <TableHead>Price</TableHead>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-gray-100 select-none" 
+                        onClick={() => handleSort('username')}
+                      >
+                        User {sortColumn === 'username' && (sortDirection === 'asc' ? '↑' : '↓')}
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-gray-100 select-none" 
+                        onClick={() => handleSort('name')}
+                      >
+                        Name {sortColumn === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-gray-100 select-none" 
+                        onClick={() => handleSort('match_number')}
+                      >
+                        Match {sortColumn === 'match_number' && (sortDirection === 'asc' ? '↑' : '↓')}
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-gray-100 select-none" 
+                        onClick={() => handleSort('date')}
+                      >
+                        Date {sortColumn === 'date' && (sortDirection === 'asc' ? '↑' : '↓')}
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-gray-100 select-none" 
+                        onClick={() => handleSort('venue')}
+                      >
+                        Venue {sortColumn === 'venue' && (sortDirection === 'asc' ? '↑' : '↓')}
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-gray-100 select-none" 
+                        onClick={() => handleSort('ticket_category')}
+                      >
+                        Category {sortColumn === 'ticket_category' && (sortDirection === 'asc' ? '↑' : '↓')}
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-gray-100 select-none" 
+                        onClick={() => handleSort('quantity')}
+                      >
+                        Quantity {sortColumn === 'quantity' && (sortDirection === 'asc' ? '↑' : '↓')}
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-gray-100 select-none" 
+                        onClick={() => handleSort('ticket_price')}
+                      >
+                        Price {sortColumn === 'ticket_price' && (sortDirection === 'asc' ? '↑' : '↓')}
+                      </TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredTickets.map((ticket) => (
+                    {sortedTickets.map((ticket) => (
                       <TableRow key={ticket.id}>
                         <TableCell>{ticket.username}</TableCell>
                         <TableCell>{ticket.name}</TableCell>
