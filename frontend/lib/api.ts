@@ -3,11 +3,17 @@ import { User, Ticket, Match, LoginCredentials, RegisterCredentials, TicketFormD
 
 // Function to get API base URL dynamically
 const getApiBaseUrl = () => {
-  const url = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  // Force the correct URL for production
+  const isProduction = typeof window !== 'undefined' && window.location.hostname !== 'localhost';
+  const url = isProduction 
+    ? 'https://fifa-tickets-app-production.up.railway.app'
+    : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000');
+  
   console.log('getApiBaseUrl called - API_BASE_URL:', url);
   console.log('NEXT_PUBLIC_API_URL env var:', process.env.NEXT_PUBLIC_API_URL);
   console.log('All env vars:', Object.keys(process.env).filter(key => key.includes('API')));
   console.log('Current location:', typeof window !== 'undefined' ? window.location.href : 'server-side');
+  console.log('Is production:', isProduction);
   return url;
 };
 
