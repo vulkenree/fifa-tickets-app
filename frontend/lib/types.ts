@@ -41,5 +41,5 @@ export interface TicketFormData {
   ticket_category: string;
   quantity: number;
   ticket_info?: string;
-  ticket_price?: number;
+  ticket_price?: number | undefined;
 }

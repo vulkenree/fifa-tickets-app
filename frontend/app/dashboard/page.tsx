@@ -26,10 +26,7 @@ const ticketSchema = z.object({
   ticket_category: z.string().min(1, 'Ticket category is required'),
   quantity: z.number().min(1, 'Quantity must be at least 1'),
   ticket_info: z.string().optional(),
-  ticket_price: z.union([z.number().min(0), z.string()]).optional().transform((val) => {
-    if (val === '' || val === undefined || val === null) return undefined;
-    return typeof val === 'string' ? parseFloat(val) : val;
-  }),
+  ticket_price: z.string().optional(),
 });
 
 type TicketForm = z.infer<typeof ticketSchema>;
@@ -57,7 +54,7 @@ export default function DashboardPage() {
       ticket_category: '',
       quantity: 1,
       ticket_info: '',
-      ticket_price: undefined,
+      ticket_price: '',
     },
   });
 
@@ -87,11 +84,19 @@ export default function DashboardPage() {
   // Form submission
   const onSubmit = async (data: TicketForm) => {
     try {
+      // Convert ticket_price string to number or undefined
+      const ticketData: TicketFormData = {
+        ...data,
+        ticket_price: data.ticket_price && data.ticket_price.trim() !== '' 
+          ? parseFloat(data.ticket_price) 
+          : undefined
+      };
+
       if (editingTicket) {
-        await updateTicket(editingTicket.id, data);
+        await updateTicket(editingTicket.id, ticketData);
         toast.success('Ticket updated successfully');
       } else {
-        await createTicket(data);
+        await createTicket(ticketData);
         toast.success('Ticket created successfully');
       }
       setIsDialogOpen(false);
@@ -148,7 +153,7 @@ export default function DashboardPage() {
       ticket_category: ticket.ticket_category,
       quantity: ticket.quantity,
       ticket_info: ticket.ticket_info || '',
-      ticket_price: ticket.ticket_price || undefined,
+      ticket_price: ticket.ticket_price ? ticket.ticket_price.toString() : '',
     });
     // Find and set the selected match
     const match = matches.find(m => m.match_number === ticket.match_number);
