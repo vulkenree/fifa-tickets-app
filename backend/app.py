@@ -297,10 +297,13 @@ def create_ticket():
     if not match:
         return jsonify({'error': 'Invalid match number. Please select from the dropdown.'}), 400
     
-    # Validate date format
+    # Validate date format - parse explicitly to avoid timezone issues
     try:
-        date_obj = datetime.strptime(data['date'], '%Y-%m-%d').date()
-    except ValueError:
+        date_parts = data['date'].split('-')
+        if len(date_parts) != 3:
+            raise ValueError("Invalid date format")
+        date_obj = datetime(int(date_parts[0]), int(date_parts[1]), int(date_parts[2])).date()
+    except (ValueError, IndexError):
         return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
     
     # Validate date is within FIFA 2026 World Cup period
@@ -365,10 +368,13 @@ def update_ticket(ticket_id):
     if not match:
         return jsonify({'error': 'Invalid match number. Please select from the dropdown.'}), 400
     
-    # Validate date format
+    # Validate date format - parse explicitly to avoid timezone issues
     try:
-        date_obj = datetime.strptime(data['date'], '%Y-%m-%d').date()
-    except ValueError:
+        date_parts = data['date'].split('-')
+        if len(date_parts) != 3:
+            raise ValueError("Invalid date format")
+        date_obj = datetime(int(date_parts[0]), int(date_parts[1]), int(date_parts[2])).date()
+    except (ValueError, IndexError):
         return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
     
     # Validate date is within FIFA 2026 World Cup period
@@ -432,9 +438,13 @@ def init_match_data():
                 reader = csv.DictReader(f)
                 match_count = 0
                 for row in reader:
+                    # Parse date explicitly to avoid timezone issues
+                    date_parts = row['date'].split('-')
+                    date_obj = datetime(int(date_parts[0]), int(date_parts[1]), int(date_parts[2])).date()
+                    
                     match = Match(
                         match_number=row['match_number'],
-                        date=datetime.strptime(row['date'], '%Y-%m-%d').date(),
+                        date=date_obj,
                         venue=row['venue']
                     )
                     db.session.add(match)
@@ -455,8 +465,12 @@ def init_match_data():
                 reader = csv.DictReader(f)
                 corrected_matches = {}
                 for row in reader:
+                    # Parse date explicitly to avoid timezone issues
+                    date_parts = row['date'].split('-')
+                    date_obj = datetime(int(date_parts[0]), int(date_parts[1]), int(date_parts[2])).date()
+                    
                     corrected_matches[row['match_number']] = {
-                        'date': datetime.strptime(row['date'], '%Y-%m-%d').date(),
+                        'date': date_obj,
                         'venue': row['venue']
                     }
                 
