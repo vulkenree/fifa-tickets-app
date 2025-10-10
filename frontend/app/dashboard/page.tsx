@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { toast } from 'sonner';
 import { Ticket, Match, TicketFormData } from '@/lib/types';
 import { format, parseISO } from 'date-fns';
@@ -40,6 +41,7 @@ export default function DashboardPage() {
   const [userFilter, setUserFilter] = useState('all');
   const [venueFilter, setVenueFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [matchNumberFilter, setMatchNumberFilter] = useState<string[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTicket, setEditingTicket] = useState<Ticket | null>(null);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
@@ -66,6 +68,11 @@ export default function DashboardPage() {
   const uniqueUsers = [...new Set(tickets.map(t => t.username))];
   const uniqueVenues = [...new Set(tickets.map(t => t.venue))];
   const uniqueCategories = [...new Set(tickets.map(t => t.ticket_category))];
+  const uniqueMatchNumbers = [...new Set(tickets.map(t => t.match_number))].sort((a, b) => {
+    const aNum = parseInt(a.replace('M', ''));
+    const bNum = parseInt(b.replace('M', ''));
+    return aNum - bNum;
+  });
 
   // Sort matches numerically by match number
   const sortedMatches = [...matches].sort((a, b) => {
@@ -128,6 +135,7 @@ export default function DashboardPage() {
     setUserFilter('all');
     setVenueFilter('all');
     setCategoryFilter('all');
+    setMatchNumberFilter([]);
   };
 
   // Filter tickets
@@ -142,8 +150,9 @@ export default function DashboardPage() {
     const matchesUser = userFilter === 'all' || ticket.username === userFilter;
     const matchesVenue = venueFilter === 'all' || ticket.venue === venueFilter;
     const matchesCategory = categoryFilter === 'all' || ticket.ticket_category === categoryFilter;
+    const matchesMatchNumber = matchNumberFilter.length === 0 || matchNumberFilter.includes(ticket.match_number);
     
-    return matchesSearch && matchesUser && matchesVenue && matchesCategory;
+    return matchesSearch && matchesUser && matchesVenue && matchesCategory && matchesMatchNumber;
   });
 
   // Sort filtered tickets
@@ -451,50 +460,47 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">User</label>
-                <Select value={userFilter} onValueChange={setUserFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="All Users" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Users</SelectItem>
-                    {uniqueUsers.map(user => (
-                      <SelectItem key={user} value={user}>{user}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <SearchableSelect
+                options={[
+                  { value: 'all', label: 'All Users' },
+                  ...uniqueUsers.map(user => ({ value: user, label: user }))
+                ]}
+                value={userFilter}
+                onChange={(value) => setUserFilter(Array.isArray(value) ? value[0] || 'all' : value)}
+                placeholder="All Users"
+                searchPlaceholder="Search users..."
+              />
               
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Venue</label>
-                <Select value={venueFilter} onValueChange={setVenueFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="All Venues" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Venues</SelectItem>
-                    {uniqueVenues.map(venue => (
-                      <SelectItem key={venue} value={venue}>{venue}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <SearchableSelect
+                options={[
+                  { value: 'all', label: 'All Venues' },
+                  ...uniqueVenues.map(venue => ({ value: venue, label: venue }))
+                ]}
+                value={venueFilter}
+                onChange={(value) => setVenueFilter(Array.isArray(value) ? value[0] || 'all' : value)}
+                placeholder="All Venues"
+                searchPlaceholder="Search venues..."
+              />
               
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
-                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="All Categories" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Categories</SelectItem>
-                    {uniqueCategories.map(category => (
-                      <SelectItem key={category} value={category}>{category}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <SearchableSelect
+                options={[
+                  { value: 'all', label: 'All Categories' },
+                  ...uniqueCategories.map(category => ({ value: category, label: category }))
+                ]}
+                value={categoryFilter}
+                onChange={(value) => setCategoryFilter(Array.isArray(value) ? value[0] || 'all' : value)}
+                placeholder="All Categories"
+                searchPlaceholder="Search categories..."
+              />
+              
+              <SearchableSelect
+                options={uniqueMatchNumbers.map(match => ({ value: match, label: match }))}
+                value={matchNumberFilter}
+                onChange={(value) => setMatchNumberFilter(Array.isArray(value) ? value : [])}
+                placeholder="All Matches"
+                searchPlaceholder="Search match numbers..."
+                multiSelect={true}
+              />
             </div>
           </CardContent>
         </Card>
