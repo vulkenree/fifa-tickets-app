@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash
+from flask_cors import CORS
 from models import db, User, Ticket, Match
 from datetime import datetime, date
 import re
@@ -14,6 +15,11 @@ app = Flask(__name__)
 
 # Production configuration
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', secrets.token_hex(32))
+
+# Session config for Next.js frontend
+app.config['SESSION_COOKIE_SAMESITE'] = 'None' if os.environ.get('FLASK_ENV') == 'production' else 'Lax'
+app.config['SESSION_COOKIE_SECURE'] = True if os.environ.get('FLASK_ENV') == 'production' else False
+app.config['SESSION_COOKIE_HTTPONLY'] = True
 
 # Smart database configuration
 database_url = os.environ.get('DATABASE_URL')
@@ -48,6 +54,17 @@ else:
 
 # Initialize database
 db.init_app(app)
+
+# Configure CORS for Next.js frontend
+CORS(app, 
+     origins=[
+         'http://localhost:3000',  # Local dev
+         os.environ.get('FRONTEND_URL', 'https://your-frontend.railway.app')
+     ],
+     supports_credentials=True,  # Allow cookies
+     allow_headers=['Content-Type', 'Authorization'],
+     methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
+)
 
 def login_required(f):
     """Decorator to require login for protected routes"""
@@ -131,6 +148,69 @@ def register():
 def logout():
     session.clear()
     return redirect(url_for('login'))
+
+# API Auth endpoints for Next.js frontend
+@app.route('/api/auth/login', methods=['POST'])
+def api_login():
+    """API login endpoint for Next.js"""
+    data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')
+    
+    if not username or not password:
+        return jsonify({'error': 'Username and password required'}), 400
+    
+    user = User.query.filter_by(username=username).first()
+    
+    if user and user.check_password(password):
+        session['user_id'] = user.id
+        session['username'] = user.username
+        return jsonify({
+            'id': user.id,
+            'username': user.username
+        })
+    else:
+        return jsonify({'error': 'Invalid credentials'}), 401
+
+@app.route('/api/auth/logout', methods=['POST'])
+@login_required
+def api_logout():
+    """API logout endpoint"""
+    session.clear()
+    return jsonify({'message': 'Logged out successfully'})
+
+@app.route('/api/auth/register', methods=['POST'])
+def api_register():
+    """API registration endpoint"""
+    data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')
+    
+    if not username or not password:
+        return jsonify({'error': 'Username and password required'}), 400
+    
+    if User.query.filter_by(username=username).first():
+        return jsonify({'error': 'Username already exists'}), 400
+    
+    user = User(username=username)
+    user.set_password(password)
+    db.session.add(user)
+    db.session.commit()
+    
+    return jsonify({
+        'id': user.id,
+        'username': user.username
+    }), 201
+
+@app.route('/api/auth/me', methods=['GET'])
+@login_required
+def get_current_user():
+    """Get current authenticated user"""
+    user = User.query.get(session['user_id'])
+    return jsonify({
+        'id': user.id,
+        'username': user.username
+    })
 
 @app.route('/dashboard')
 @login_required
