@@ -1,21 +1,40 @@
 'use client';
 
 import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { useAuth } from '@/hooks/use-auth';
 import { useTickets } from '@/hooks/use-tickets';
+import { useMatches } from '@/hooks/use-matches';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Ticket } from '@/lib/types';
+import { Ticket, Match, TicketFormData } from '@/lib/types';
 import { format } from 'date-fns';
+
+const ticketSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  match_number: z.string().min(1, 'Match number is required'),
+  date: z.string().min(1, 'Date is required'),
+  venue: z.string().min(1, 'Venue is required'),
+  ticket_category: z.string().min(1, 'Ticket category is required'),
+  quantity: z.number().min(1, 'Quantity must be at least 1'),
+  ticket_info: z.string().optional(),
+  ticket_price: z.number().min(0).optional(),
+});
+
+type TicketForm = z.infer<typeof ticketSchema>;
 
 export default function DashboardPage() {
   const { user, logout } = useAuth();
   const { tickets, isLoading, createTicket, updateTicket, deleteTicket } = useTickets();
+  const { matches } = useMatches();
   
   const [searchTerm, setSearchTerm] = useState('');
   const [userFilter, setUserFilter] = useState('all');
@@ -23,11 +42,71 @@ export default function DashboardPage() {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTicket, setEditingTicket] = useState<Ticket | null>(null);
+  const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
+
+  const form = useForm<TicketForm>({
+    resolver: zodResolver(ticketSchema),
+    defaultValues: {
+      name: '',
+      match_number: '',
+      date: '',
+      venue: '',
+      ticket_category: '',
+      quantity: 1,
+      ticket_info: '',
+      ticket_price: undefined,
+    },
+  });
 
   // Get unique values for filters
   const uniqueUsers = [...new Set(tickets.map(t => t.username))];
   const uniqueVenues = [...new Set(tickets.map(t => t.venue))];
   const uniqueCategories = [...new Set(tickets.map(t => t.ticket_category))];
+
+  // Sort matches numerically by match number
+  const sortedMatches = [...matches].sort((a, b) => {
+    const aNum = parseInt(a.match_number.replace('M', ''));
+    const bNum = parseInt(b.match_number.replace('M', ''));
+    return aNum - bNum;
+  });
+
+  // Handle match selection
+  const handleMatchSelect = (matchNumber: string) => {
+    const match = matches.find(m => m.match_number === matchNumber);
+    if (match) {
+      setSelectedMatch(match);
+      form.setValue('match_number', match.match_number);
+      form.setValue('date', match.date);
+      form.setValue('venue', match.venue);
+    }
+  };
+
+  // Form submission
+  const onSubmit = async (data: TicketForm) => {
+    try {
+      if (editingTicket) {
+        await updateTicket(editingTicket.id, data);
+        toast.success('Ticket updated successfully');
+      } else {
+        await createTicket(data);
+        toast.success('Ticket created successfully');
+      }
+      setIsDialogOpen(false);
+      setEditingTicket(null);
+      form.reset();
+      setSelectedMatch(null);
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || 'Failed to save ticket');
+    }
+  };
+
+  // Clear filters function
+  const clearFilters = () => {
+    setSearchTerm('');
+    setUserFilter('all');
+    setVenueFilter('all');
+    setCategoryFilter('all');
+  };
 
   // Filter tickets
   const filteredTickets = tickets.filter(ticket => {
@@ -58,11 +137,31 @@ export default function DashboardPage() {
 
   const handleEditTicket = (ticket: Ticket) => {
     setEditingTicket(ticket);
+    form.reset({
+      name: ticket.name,
+      match_number: ticket.match_number,
+      date: ticket.date,
+      venue: ticket.venue,
+      ticket_category: ticket.ticket_category,
+      quantity: ticket.quantity,
+      ticket_info: ticket.ticket_info || '',
+      ticket_price: ticket.ticket_price || undefined,
+    });
+    // Find and set the selected match
+    const match = matches.find(m => m.match_number === ticket.match_number);
+    setSelectedMatch(match || null);
     setIsDialogOpen(true);
   };
 
   const canEditTicket = (ticket: Ticket) => {
     return user && ticket.user_id === user.id;
+  };
+
+  const handleOpenDialog = () => {
+    setEditingTicket(null);
+    form.reset();
+    setSelectedMatch(null);
+    setIsDialogOpen(true);
   };
 
   if (isLoading) {
@@ -107,7 +206,7 @@ export default function DashboardPage() {
             </div>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
-                <Button className="mt-4 sm:mt-0">
+                <Button className="mt-4 sm:mt-0" onClick={handleOpenDialog}>
                   + Add New Ticket
                 </Button>
               </DialogTrigger>
@@ -120,9 +219,139 @@ export default function DashboardPage() {
                     {editingTicket ? 'Update ticket information' : 'Add a new FIFA 2026 ticket'}
                   </DialogDescription>
                 </DialogHeader>
-                <div className="p-4">
-                  <p className="text-gray-600">Ticket form will be implemented in the next step.</p>
-                </div>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 p-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Match Number */}
+                    <div className="space-y-2">
+                      <Label htmlFor="match_number">Match Number *</Label>
+                      <Select onValueChange={handleMatchSelect} value={selectedMatch?.match_number || ''}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a match" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {sortedMatches.map((match) => (
+                            <SelectItem key={match.match_number} value={match.match_number}>
+                              {match.match_number}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {form.formState.errors.match_number && (
+                        <p className="text-sm text-red-600">{form.formState.errors.match_number.message}</p>
+                      )}
+                    </div>
+
+                    {/* Date */}
+                    <div className="space-y-2">
+                      <Label htmlFor="date">Date *</Label>
+                      <Input
+                        id="date"
+                        type="text"
+                        {...form.register('date')}
+                        readOnly
+                        className="bg-gray-50"
+                      />
+                      {form.formState.errors.date && (
+                        <p className="text-sm text-red-600">{form.formState.errors.date.message}</p>
+                      )}
+                    </div>
+
+                    {/* Venue */}
+                    <div className="space-y-2">
+                      <Label htmlFor="venue">Venue *</Label>
+                      <Input
+                        id="venue"
+                        type="text"
+                        {...form.register('venue')}
+                        readOnly
+                        className="bg-gray-50"
+                      />
+                      {form.formState.errors.venue && (
+                        <p className="text-sm text-red-600">{form.formState.errors.venue.message}</p>
+                      )}
+                    </div>
+
+                    {/* Name */}
+                    <div className="space-y-2">
+                      <Label htmlFor="name">Name *</Label>
+                      <Input
+                        id="name"
+                        type="text"
+                        placeholder="Who is attending?"
+                        {...form.register('name')}
+                      />
+                      {form.formState.errors.name && (
+                        <p className="text-sm text-red-600">{form.formState.errors.name.message}</p>
+                      )}
+                    </div>
+
+                    {/* Ticket Category */}
+                    <div className="space-y-2">
+                      <Label htmlFor="ticket_category">Category *</Label>
+                      <Select onValueChange={(value) => form.setValue('ticket_category', value)} value={form.watch('ticket_category')}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Category 1">Category 1</SelectItem>
+                          <SelectItem value="Category 2">Category 2</SelectItem>
+                          <SelectItem value="Category 3">Category 3</SelectItem>
+                          <SelectItem value="Category 4">Category 4</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {form.formState.errors.ticket_category && (
+                        <p className="text-sm text-red-600">{form.formState.errors.ticket_category.message}</p>
+                      )}
+                    </div>
+
+                    {/* Quantity */}
+                    <div className="space-y-2">
+                      <Label htmlFor="quantity">Quantity *</Label>
+                      <Input
+                        id="quantity"
+                        type="number"
+                        min="1"
+                        {...form.register('quantity', { valueAsNumber: true })}
+                      />
+                      {form.formState.errors.quantity && (
+                        <p className="text-sm text-red-600">{form.formState.errors.quantity.message}</p>
+                      )}
+                    </div>
+
+                    {/* Ticket Info */}
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="ticket_info">Ticket Info (Optional)</Label>
+                      <Input
+                        id="ticket_info"
+                        type="text"
+                        placeholder="Additional ticket information"
+                        {...form.register('ticket_info')}
+                      />
+                    </div>
+
+                    {/* Ticket Price */}
+                    <div className="space-y-2">
+                      <Label htmlFor="ticket_price">Price (Optional)</Label>
+                      <Input
+                        id="ticket_price"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0.00"
+                        {...form.register('ticket_price', { valueAsNumber: true })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end space-x-2 pt-4">
+                    <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={form.formState.isSubmitting}>
+                      {form.formState.isSubmitting ? 'Saving...' : (editingTicket ? 'Update Ticket' : 'Create Ticket')}
+                    </Button>
+                  </div>
+                </form>
               </DialogContent>
             </Dialog>
           </div>
@@ -143,7 +372,12 @@ export default function DashboardPage() {
         {/* Filters */}
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle>Filters</CardTitle>
+            <div className="flex justify-between items-center">
+              <CardTitle>Filters</CardTitle>
+              <Button variant="outline" size="sm" onClick={clearFilters}>
+                Clear Filters
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

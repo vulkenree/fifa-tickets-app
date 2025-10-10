@@ -197,6 +197,10 @@ def api_register():
     db.session.add(user)
     db.session.commit()
     
+    # Log the user in after registration
+    session['user_id'] = user.id
+    session.permanent = True
+    
     return jsonify({
         'id': user.id,
         'username': user.username
