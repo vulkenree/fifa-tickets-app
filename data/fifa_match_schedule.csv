@@ -1,0 +1,105 @@
+match_number,date,venue
+M1,2026-06-11,Mexico City
+M2,2026-06-11,Guadalajara
+M3,2026-06-12,Toronto
+M4,2026-06-12,Los Angeles
+M5,2026-06-13,Boston
+M6,2026-06-13,Vancouver
+M7,2026-06-13,New York/New Jersey
+M8,2026-06-13,San Francisco Bay Area
+M9,2026-06-14,Philadelphia
+M10,2026-06-14,Houston
+M11,2026-06-14,Dallas
+M12,2026-06-14,Monterrey
+M13,2026-06-15,Miami
+M14,2026-06-15,Atlanta
+M15,2026-06-15,Los Angeles
+M16,2026-06-15,Seattle
+M17,2026-06-16,New York/New Jersey
+M18,2026-06-16,Boston
+M19,2026-06-16,Kansas City
+M20,2026-06-16,San Francisco Bay Area
+M21,2026-06-17,Toronto
+M22,2026-06-17,Dallas
+M23,2026-06-17,Houston
+M24,2026-06-17,Mexico City
+M25,2026-06-18,Atlanta
+M26,2026-06-18,Los Angeles
+M27,2026-06-18,Vancouver
+M28,2026-06-18,Guadalajara
+M29,2026-06-19,Philadelphia
+M30,2026-06-19,Boston
+M31,2026-06-19,San Francisco Bay Area
+M32,2026-06-19,Seattle
+M33,2026-06-20,Toronto
+M34,2026-06-20,Kansas City
+M35,2026-06-20,Houston
+M36,2026-06-20,Monterrey
+M37,2026-06-21,Miami
+M38,2026-06-21,Atlanta
+M39,2026-06-21,Los Angeles
+M40,2026-06-21,Vancouver
+M41,2026-06-22,New York/New Jersey
+M42,2026-06-22,Philadelphia
+M43,2026-06-22,Dallas
+M44,2026-06-22,San Francisco Bay Area
+M45,2026-06-23,Boston
+M46,2026-06-23,Toronto
+M47,2026-06-23,Houston
+M48,2026-06-23,Guadalajara
+M49,2026-06-24,Miami
+M50,2026-06-24,Atlanta
+M51,2026-06-24,Vancouver
+M52,2026-06-24,Seattle
+M53,2026-06-24,Mexico City
+M54,2026-06-24,Monterrey
+M55,2026-06-25,Philadelphia
+M56,2026-06-25,New York/New Jersey
+M57,2026-06-25,Dallas
+M58,2026-06-25,Kansas City
+M59,2026-06-25,Los Angeles
+M60,2026-06-25,San Francisco Bay Area
+M61,2026-06-26,Boston
+M62,2026-06-26,Toronto
+M63,2026-06-26,Seattle
+M64,2026-06-26,Vancouver
+M65,2026-06-28,Houston
+M66,2026-06-28,Dallas
+M67,2026-06-28,New York/New Jersey
+M68,2026-06-29,Philadelphia
+M69,2026-06-29,Kansas City
+M70,2026-06-29,Dallas
+M71,2026-06-30,Miami
+M72,2026-06-30,Atlanta
+M73,2026-06-30,Los Angeles
+M74,2026-06-30,Boston
+M75,2026-07-01,Houston
+M76,2026-07-01,Houston
+M77,2026-07-02,New York/New Jersey
+M78,2026-07-02,Dallas
+M79,2026-07-03,Miami
+M80,2026-07-03,Atlanta
+M81,2026-07-04,San Francisco Bay Area
+M82,2026-07-04,Seattle
+M83,2026-07-05,Mexico City
+M84,2026-07-05,Guadalajara
+M85,2026-07-05,Vancouver
+M86,2026-07-06,Miami
+M87,2026-07-06,Kansas City
+M88,2026-07-06,Dallas
+M89,2026-07-07,Philadelphia
+M90,2026-07-07,Houston
+M91,2026-07-08,New York/New Jersey
+M92,2026-07-08,Seattle
+M93,2026-07-09,Dallas
+M94,2026-07-09,Los Angeles
+M95,2026-07-09,Atlanta
+M96,2026-07-09,Vancouver
+M97,2026-07-09,Boston
+M98,2026-07-10,Mexico City
+M99,2026-07-10,Miami
+M100,2026-07-10,Kansas City
+M101,2026-07-11,Dallas
+M102,2026-07-11,Atlanta
+M103,2026-07-14,Miami
+M104,2026-07-19,New York/New Jersey

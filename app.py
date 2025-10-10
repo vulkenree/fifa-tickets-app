@@ -1,9 +1,10 @@
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash
-from models import db, User, Ticket
+from models import db, User, Ticket, Match
 from datetime import datetime, date
 import re
 import os
 import secrets
+import csv
 
 # FIFA 2026 World Cup date range
 FIFA_MIN_DATE = date(2026, 6, 11)
@@ -47,11 +48,6 @@ else:
 
 # Initialize database
 db.init_app(app)
-
-def validate_match_number(match_number):
-    """Validate that match number starts with M followed by digits"""
-    pattern = r'^M\d+$'
-    return bool(re.match(pattern, match_number))
 
 def login_required(f):
     """Decorator to require login for protected routes"""
@@ -221,9 +217,10 @@ def create_ticket():
         if not data.get(field):
             return jsonify({'error': f'{field} is required'}), 400
     
-    # Validate match number format
-    if not validate_match_number(data['match_number']):
-        return jsonify({'error': 'Match number must start with M followed by digits (e.g., M1, M23)'}), 400
+    # Validate match number exists in FIFA 2026 schedule
+    match = Match.query.filter_by(match_number=data['match_number']).first()
+    if not match:
+        return jsonify({'error': 'Invalid match number. Please select from the dropdown.'}), 400
     
     # Validate date format
     try:
@@ -288,9 +285,10 @@ def update_ticket(ticket_id):
         if not data.get(field):
             return jsonify({'error': f'{field} is required'}), 400
     
-    # Validate match number format
-    if not validate_match_number(data['match_number']):
-        return jsonify({'error': 'Match number must start with M followed by digits (e.g., M1, M23)'}), 400
+    # Validate match number exists in FIFA 2026 schedule
+    match = Match.query.filter_by(match_number=data['match_number']).first()
+    if not match:
+        return jsonify({'error': 'Invalid match number. Please select from the dropdown.'}), 400
     
     # Validate date format
     try:
@@ -348,9 +346,51 @@ def delete_ticket(ticket_id):
     
     return jsonify({'message': 'Ticket deleted successfully'})
 
+def init_match_data():
+    """Initialize FIFA 2026 match schedule data from CSV if not already loaded"""
+    if Match.query.count() == 0:
+        csv_path = os.path.join(os.path.dirname(__file__), 'data', 'fifa_match_schedule.csv')
+        try:
+            with open(csv_path, 'r') as f:
+                reader = csv.DictReader(f)
+                match_count = 0
+                for row in reader:
+                    match = Match(
+                        match_number=row['match_number'],
+                        date=datetime.strptime(row['date'], '%Y-%m-%d').date(),
+                        venue=row['venue']
+                    )
+                    db.session.add(match)
+                    match_count += 1
+                db.session.commit()
+                print(f"✅ Loaded {match_count} FIFA 2026 matches from CSV")
+        except FileNotFoundError:
+            print(f"⚠️  Warning: Match schedule CSV not found at {csv_path}")
+        except Exception as e:
+            print(f"❌ Error loading match data: {e}")
+    else:
+        print(f"✅ Match schedule already loaded ({Match.query.count()} matches)")
+
+@app.route('/api/matches', methods=['GET'])
+def get_matches():
+    """Get all FIFA 2026 matches for dropdown"""
+    matches = Match.query.order_by(Match.match_number).all()
+    return jsonify([m.to_dict() for m in matches])
+
+@app.route('/api/matches/<match_number>', methods=['GET'])
+def get_match_details(match_number):
+    """Get date and venue for a specific match number"""
+    match = Match.query.filter_by(match_number=match_number).first()
+    if match:
+        return jsonify(match.to_dict())
+    return jsonify({'error': 'Match not found'}), 404
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
+        
+        # Initialize match schedule data from CSV
+        init_match_data()
         
         # Create a default admin user if none exists
         if not User.query.first():

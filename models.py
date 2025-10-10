@@ -4,6 +4,23 @@ from datetime import datetime
 
 db = SQLAlchemy()
 
+class Match(db.Model):
+    """FIFA 2026 Match Schedule Lookup Table"""
+    id = db.Column(db.Integer, primary_key=True)
+    match_number = db.Column(db.String(10), unique=True, nullable=False, index=True)
+    date = db.Column(db.Date, nullable=False)
+    venue = db.Column(db.String(100), nullable=False)
+    
+    def to_dict(self):
+        return {
+            'match_number': self.match_number,
+            'date': self.date.strftime('%Y-%m-%d'),
+            'venue': self.venue
+        }
+    
+    def __repr__(self):
+        return f'<Match {self.match_number} - {self.venue}>'
+
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)

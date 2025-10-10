@@ -85,44 +85,24 @@
                     </div>
                     <div class="form-group">
                         <label for="matchNumber">Match Number *</label>
-                        <input type="text" id="matchNumber" name="match_number" placeholder="M1, M23, etc." required>
-                        <small>Format: M followed by digits (e.g., M1, M23)</small>
+                        <select id="matchNumber" name="match_number" required>
+                            <option value="">Select Match...</option>
+                            <!-- Populated via JavaScript from FIFA 2026 schedule -->
+                        </select>
+                        <small>Select from official FIFA 2026 match schedule</small>
                     </div>
                 </div>
                 
                 <div class="form-row">
                     <div class="form-group">
                         <label for="ticketDate">Date *</label>
-                        <input type="date" id="ticketDate" name="date" min="2026-06-11" max="2026-07-19" required>
-                        <small>FIFA 2026 World Cup: June 11 - July 19, 2026</small>
+                        <input type="date" id="ticketDate" name="date" readonly required>
+                        <small>Auto-filled from match schedule</small>
                     </div>
                     <div class="form-group">
                         <label for="venue">Venue *</label>
-                        <select id="venue" name="venue" required>
-                            <option value="">Select Venue</option>
-                            <optgroup label="🇺🇸 United States">
-                                <option value="Atlanta, GA — Mercedes-Benz Stadium">Atlanta, GA — Mercedes-Benz Stadium</option>
-                                <option value="Boston/Foxborough, MA — Gillette Stadium">Boston/Foxborough, MA — Gillette Stadium</option>
-                                <option value="Dallas/Arlington, TX — AT&T Stadium">Dallas/Arlington, TX — AT&T Stadium</option>
-                                <option value="Houston, TX — NRG Stadium">Houston, TX — NRG Stadium</option>
-                                <option value="Kansas City, MO — GEHA Field at Arrowhead Stadium">Kansas City, MO — GEHA Field at Arrowhead Stadium</option>
-                                <option value="Los Angeles/Inglewood, CA — SoFi Stadium">Los Angeles/Inglewood, CA — SoFi Stadium</option>
-                                <option value="Miami, FL — Hard Rock Stadium">Miami, FL — Hard Rock Stadium</option>
-                                <option value="New York/New Jersey (East Rutherford, NJ) — MetLife Stadium">New York/New Jersey (East Rutherford, NJ) — MetLife Stadium</option>
-                                <option value="Philadelphia, PA — Lincoln Financial Field">Philadelphia, PA — Lincoln Financial Field</option>
-                                <option value="San Francisco Bay Area/Santa Clara, CA — Levi's Stadium">San Francisco Bay Area/Santa Clara, CA — Levi's Stadium</option>
-                                <option value="Seattle, WA — Lumen Field">Seattle, WA — Lumen Field</option>
-                            </optgroup>
-                            <optgroup label="🇲🇽 Mexico">
-                                <option value="Mexico City — Estadio Azteca">Mexico City — Estadio Azteca</option>
-                                <option value="Guadalajara — Estadio Akron">Guadalajara — Estadio Akron</option>
-                                <option value="Monterrey — Estadio BBVA">Monterrey — Estadio BBVA</option>
-                            </optgroup>
-                            <optgroup label="🇨🇦 Canada">
-                                <option value="Toronto — BMO Field">Toronto — BMO Field</option>
-                                <option value="Vancouver — BC Place">Vancouver — BC Place</option>
-                            </optgroup>
-                        </select>
+                        <input type="text" id="venue" name="venue" readonly required placeholder="Select match first">
+                        <small>Auto-filled from match schedule</small>
                     </div>
                 </div>
                 

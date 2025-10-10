@@ -20,10 +20,14 @@ const modalTitle = document.getElementById('modalTitle');
 document.addEventListener('DOMContentLoaded', function() {
     loadCurrentUser();
     loadTickets();
+    loadMatches();  // Load FIFA 2026 match schedule
     
     addTicketBtn.addEventListener('click', openAddModal);
     ticketForm.addEventListener('submit', handleFormSubmit);
     searchInput.addEventListener('input', filterTickets);
+    
+    // Match selection change listener for auto-population
+    document.getElementById('matchNumber').addEventListener('change', handleMatchSelection);
     
     // Filter event listeners
     document.getElementById('userFilter').addEventListener('change', filterTickets);
@@ -91,6 +95,51 @@ async function loadTickets() {
         if (error.message.includes('Authentication required')) {
             window.location.href = '/login';
         }
+    }
+}
+
+// Load FIFA 2026 match schedule into dropdown
+async function loadMatches() {
+    try {
+        const matches = await apiCall('/api/matches');
+        const matchSelect = document.getElementById('matchNumber');
+        
+        // Clear existing options except the first one
+        matchSelect.innerHTML = '<option value="">Select Match...</option>';
+        
+        // Add match options
+        matches.forEach(match => {
+            const option = document.createElement('option');
+            option.value = match.match_number;
+            option.textContent = `${match.match_number} - ${match.venue} (${match.date})`;
+            option.dataset.date = match.date;
+            option.dataset.venue = match.venue;
+            matchSelect.appendChild(option);
+        });
+        
+        console.log(`✅ Loaded ${matches.length} matches into dropdown`);
+    } catch (error) {
+        console.error('Error loading matches:', error);
+        showAlert('Failed to load match schedule', 'error');
+    }
+}
+
+// Handle match selection - auto-populate date and venue
+function handleMatchSelection() {
+    const matchSelect = document.getElementById('matchNumber');
+    const dateInput = document.getElementById('ticketDate');
+    const venueInput = document.getElementById('venue');
+    
+    const selectedOption = matchSelect.options[matchSelect.selectedIndex];
+    
+    if (selectedOption.value) {
+        // Auto-populate date and venue from selected match
+        dateInput.value = selectedOption.dataset.date;
+        venueInput.value = selectedOption.dataset.venue;
+    } else {
+        // Clear fields if no match selected
+        dateInput.value = '';
+        venueInput.value = '';
     }
 }
 
@@ -301,15 +350,9 @@ async function handleFormSubmit(e) {
         ticket_price: formData.get('ticket_price') ? parseFloat(formData.get('ticket_price')) : null
     };
     
-    // Validate match number format
-    if (!validateMatchNumber(ticketData.match_number)) {
-        showAlert('Match number must start with M followed by digits (e.g., M1, M23)', 'error');
-        return;
-    }
-    
-    // Validate date is within FIFA 2026 World Cup period
-    if (!validateDate(ticketData.date)) {
-        showAlert('Date must be between June 11, 2026 and July 19, 2026 (FIFA 2026 World Cup period)', 'error');
+    // Validation: Match number is required (selected from dropdown)
+    if (!ticketData.match_number) {
+        showAlert('Please select a match from the dropdown', 'error');
         return;
     }
     
@@ -359,19 +402,8 @@ async function deleteTicket(ticketId) {
     }
 }
 
-// Validation functions
-function validateMatchNumber(matchNumber) {
-    const pattern = /^M\d+$/;
-    return pattern.test(matchNumber);
-}
-
-function validateDate(dateString) {
-    const date = new Date(dateString);
-    const minDate = new Date('2026-06-11');
-    const maxDate = new Date('2026-07-19');
-    
-    return date >= minDate && date <= maxDate;
-}
+// Note: Match number, date, and venue validation is now handled by the match lookup dropdown
+// The dropdown ensures users can only select valid FIFA 2026 matches with correct dates and venues
 
 // Utility functions
 function escapeHtml(text) {
