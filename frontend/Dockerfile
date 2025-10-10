@@ -13,7 +13,25 @@ RUN npm ci
 FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
-COPY . .
+
+# Copy files in specific order to force layer rebuilds
+COPY package.json package-lock.json* ./
+COPY tsconfig.json jsconfig.json ./
+COPY next.config.ts ./
+COPY components.json ./
+COPY postcss.config.mjs ./
+
+# Explicitly copy lib directory first
+COPY lib/ ./lib/
+
+# Copy other directories
+COPY components/ ./components/
+COPY app/ ./app/
+COPY hooks/ ./hooks/
+COPY public/ ./public/
+
+# Copy any remaining files
+COPY *.ts *.tsx *.json *.md ./
 
 # Build the application
 RUN npm run build
