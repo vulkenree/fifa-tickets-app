@@ -26,7 +26,10 @@ const ticketSchema = z.object({
   ticket_category: z.string().min(1, 'Ticket category is required'),
   quantity: z.number().min(1, 'Quantity must be at least 1'),
   ticket_info: z.string().optional(),
-  ticket_price: z.number().min(0).optional(),
+  ticket_price: z.union([z.number().min(0), z.string()]).optional().transform((val) => {
+    if (val === '' || val === undefined || val === null) return undefined;
+    return typeof val === 'string' ? parseFloat(val) : val;
+  }),
 });
 
 type TicketForm = z.infer<typeof ticketSchema>;
@@ -338,7 +341,7 @@ export default function DashboardPage() {
                         min="0"
                         step="0.01"
                         placeholder="0.00"
-                        {...form.register('ticket_price', { valueAsNumber: true })}
+                        {...form.register('ticket_price')}
                       />
                     </div>
                   </div>
