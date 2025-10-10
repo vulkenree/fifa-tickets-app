@@ -18,9 +18,9 @@ export default function DashboardPage() {
   const { tickets, isLoading, createTicket, updateTicket, deleteTicket } = useTickets();
   
   const [searchTerm, setSearchTerm] = useState('');
-  const [userFilter, setUserFilter] = useState('');
-  const [venueFilter, setVenueFilter] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('');
+  const [userFilter, setUserFilter] = useState('all');
+  const [venueFilter, setVenueFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTicket, setEditingTicket] = useState<Ticket | null>(null);
 
@@ -38,9 +38,9 @@ export default function DashboardPage() {
       ticket.ticket_category.toLowerCase().includes(searchTerm.toLowerCase()) ||
       ticket.username.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesUser = !userFilter || ticket.username === userFilter;
-    const matchesVenue = !venueFilter || ticket.venue === venueFilter;
-    const matchesCategory = !categoryFilter || ticket.ticket_category === categoryFilter;
+    const matchesUser = userFilter === 'all' || ticket.username === userFilter;
+    const matchesVenue = venueFilter === 'all' || ticket.venue === venueFilter;
+    const matchesCategory = categoryFilter === 'all' || ticket.ticket_category === categoryFilter;
     
     return matchesSearch && matchesUser && matchesVenue && matchesCategory;
   });
@@ -154,7 +154,7 @@ export default function DashboardPage() {
                     <SelectValue placeholder="All Users" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Users</SelectItem>
+                    <SelectItem value="all">All Users</SelectItem>
                     {uniqueUsers.map(user => (
                       <SelectItem key={user} value={user}>{user}</SelectItem>
                     ))}
@@ -169,7 +169,7 @@ export default function DashboardPage() {
                     <SelectValue placeholder="All Venues" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Venues</SelectItem>
+                    <SelectItem value="all">All Venues</SelectItem>
                     {uniqueVenues.map(venue => (
                       <SelectItem key={venue} value={venue}>{venue}</SelectItem>
                     ))}
@@ -184,7 +184,7 @@ export default function DashboardPage() {
                     <SelectValue placeholder="All Categories" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Categories</SelectItem>
+                    <SelectItem value="all">All Categories</SelectItem>
                     {uniqueCategories.map(category => (
                       <SelectItem key={category} value={category}>{category}</SelectItem>
                     ))}

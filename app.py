@@ -217,15 +217,6 @@ def get_current_user():
 def dashboard():
     return render_template('dashboard.html')
 
-@app.route('/api/user')
-@login_required
-def get_current_user():
-    """Get current user information"""
-    user = User.query.get(session['user_id'])
-    return jsonify({
-        'id': user.id,
-        'username': user.username
-    })
 
 @app.route('/health')
 def health_check():
