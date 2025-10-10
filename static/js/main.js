@@ -115,8 +115,16 @@ async function loadMatches() {
         // Clear existing options except the first one
         matchSelect.innerHTML = '<option value="">Select Match...</option>';
         
-        // Add match options
-        matches.forEach(match => {
+        // Sort matches by match number (extract numeric part for proper sorting)
+        const sortedMatches = matches.sort((a, b) => {
+            // Extract numeric part from match_number (e.g., "M1" -> 1, "M10" -> 10)
+            const numA = parseInt(a.match_number.replace('M', ''));
+            const numB = parseInt(b.match_number.replace('M', ''));
+            return numA - numB;
+        });
+        
+        // Add match options in sorted order
+        sortedMatches.forEach(match => {
             const option = document.createElement('option');
             option.value = match.match_number;
             option.textContent = `${match.match_number} - ${match.venue} (${match.date})`;
@@ -125,7 +133,7 @@ async function loadMatches() {
             matchSelect.appendChild(option);
         });
         
-        console.log(`✅ Loaded ${matches.length} matches into dropdown`);
+        console.log(`✅ Loaded ${matches.length} matches into dropdown (sorted by match number)`);
     } catch (error) {
         console.error('Error loading matches:', error);
         showAlert('Failed to load match schedule', 'error');

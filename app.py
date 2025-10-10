@@ -374,8 +374,10 @@ def init_match_data():
 @app.route('/api/matches', methods=['GET'])
 def get_matches():
     """Get all FIFA 2026 matches for dropdown"""
-    matches = Match.query.order_by(Match.match_number).all()
-    return jsonify([m.to_dict() for m in matches])
+    # Sort by numeric part of match_number (M1, M2, M10, etc.)
+    matches = Match.query.all()
+    sorted_matches = sorted(matches, key=lambda m: int(m.match_number.replace('M', '')))
+    return jsonify([m.to_dict() for m in sorted_matches])
 
 @app.route('/api/matches/<match_number>', methods=['GET'])
 def get_match_details(match_number):
