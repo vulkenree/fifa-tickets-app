@@ -15,6 +15,12 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+# Debug: Show current directory and files
+RUN echo "Current directory:" && pwd && echo "Files:" && ls -la
+
+# Debug: Show tsconfig and jsconfig
+RUN echo "tsconfig.json:" && cat tsconfig.json && echo "jsconfig.json:" && cat jsconfig.json
+
 # Build the application
 RUN npm run build
 
