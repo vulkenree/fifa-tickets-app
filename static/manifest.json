@@ -1,0 +1,27 @@
+{
+  "name": "FIFA 2026 Ticket Management",
+  "short_name": "FIFA Tickets",
+  "description": "Manage your FIFA 2026 World Cup tickets",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1e40af",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/static/images/logo.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/images/logo.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["sports", "travel", "utilities"],
+  "lang": "en",
+  "dir": "ltr"
+}

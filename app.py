@@ -385,21 +385,22 @@ def get_match_details(match_number):
         return jsonify(match.to_dict())
     return jsonify({'error': 'Match not found'}), 404
 
-if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
-        
-        # Initialize match schedule data from CSV
-        init_match_data()
-        
-        # Create a default admin user if none exists
-        if not User.query.first():
-            admin = User(username='admin')
-            admin.set_password('admin123')
-            db.session.add(admin)
-            db.session.commit()
-            print("Default admin user created: username='admin', password='admin123'")
+# Initialize database and data when app starts (works in both dev and production)
+with app.app_context():
+    db.create_all()
     
+    # Initialize match schedule data from CSV
+    init_match_data()
+    
+    # Create a default admin user if none exists
+    if not User.query.first():
+        admin = User(username='admin')
+        admin.set_password('admin123')
+        db.session.add(admin)
+        db.session.commit()
+        print("Default admin user created: username='admin', password='admin123'")
+
+if __name__ == '__main__':
     # Only run development server if not in production
     if os.environ.get('FLASK_ENV') != 'production':
         port = int(os.environ.get('PORT', 5001))

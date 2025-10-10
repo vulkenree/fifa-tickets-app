@@ -2,43 +2,72 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>FIFA 2026 Tickets - Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <meta name="theme-color" content="#1e40af">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="FIFA Tickets">
 </head>
-<body>
-    <div class="container">
-        <header class="dashboard-header">
-            <div class="header-content">
-                <div class="header-title">
-                    <img src="{{ url_for('static', filename='images/logo.jpg') }}" alt="FIFA 2026 Logo" class="logo-image">
-                    <h1>FIFA 2026 Tickets</h1>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Modern Mobile-First Header -->
+    <header class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-3">
+                    <img src="{{ url_for('static', filename='images/logo.jpg') }}" alt="FIFA 2026 Logo" class="h-8 w-8 rounded-full">
+                    <h1 class="text-lg font-bold text-gray-900 hidden sm:block">FIFA 2026 Tickets</h1>
+                    <h1 class="text-lg font-bold text-gray-900 sm:hidden">FIFA 2026</h1>
                 </div>
-                <div class="user-info">
-                    <span>Welcome, {{ session.username }}!</span>
-                    <a href="{{ url_for('logout') }}" class="btn btn-secondary">Logout</a>
+                <div class="flex items-center space-x-4">
+                    <span class="text-sm text-gray-600 hidden sm:block">Welcome, <span class="font-medium text-gray-900">{{ session.username }}</span>!</span>
+                    <a href="{{ url_for('logout') }}" class="fifa-button-secondary text-sm py-2 px-4">Logout</a>
                 </div>
             </div>
-        </header>
+        </div>
+    </header>
+    
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         
-        <main class="dashboard-main">
-            <div class="dashboard-controls">
-                <button id="addTicketBtn" class="btn btn-primary">+ Add New Ticket</button>
-                <div class="filter-controls">
-                    <select id="userFilter" class="filter-select">
-                        <option value="">All Users</option>
-                    </select>
-                    <select id="venueFilter" class="filter-select">
-                        <option value="">All Venues</option>
-                    </select>
-                    <select id="categoryFilter" class="filter-select">
-                        <option value="">All Categories</option>
-                    </select>
-                    <input type="date" id="dateFromFilter" class="filter-date" placeholder="From Date">
-                    <input type="date" id="dateToFilter" class="filter-date" placeholder="To Date">
-                    <input type="text" id="searchInput" placeholder="Search tickets..." class="search-input">
+        <!-- Modern Dashboard Controls -->
+        <div class="mb-6">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-900">Your Tickets</h2>
+                    <p class="text-gray-600 mt-1">Manage your FIFA 2026 World Cup tickets</p>
                 </div>
+                <button id="addTicketBtn" class="fifa-button w-full sm:w-auto">
+                    <span class="flex items-center justify-center space-x-2">
+                        <span>+</span>
+                        <span>Add New Ticket</span>
+                    </span>
+                </button>
             </div>
+        </div>
+        
+        <!-- Modern Filter Controls -->
+        <div class="fifa-card p-6 mb-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Filter & Search</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <select id="userFilter" class="fifa-select">
+                    <option value="">All Users</option>
+                </select>
+                <select id="venueFilter" class="fifa-select">
+                    <option value="">All Venues</option>
+                </select>
+                <select id="categoryFilter" class="fifa-select">
+                    <option value="">All Categories</option>
+                </select>
+                <input type="text" id="searchInput" placeholder="Search tickets..." class="fifa-input">
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                <input type="date" id="dateFromFilter" class="fifa-input" placeholder="From Date">
+                <input type="date" id="dateToFilter" class="fifa-input" placeholder="To Date">
+            </div>
+        </div>
             
             <div class="tickets-container">
                 <div class="table-container">

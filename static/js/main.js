@@ -18,16 +18,24 @@ const modalTitle = document.getElementById('modalTitle');
 
 // Event listeners
 document.addEventListener('DOMContentLoaded', function() {
+    // Initialize PWA
+    initializePWA();
+    
+    // Load data
     loadCurrentUser();
     loadTickets();
     loadMatches();  // Load FIFA 2026 match schedule
     
+    // Event listeners
     addTicketBtn.addEventListener('click', openAddModal);
     ticketForm.addEventListener('submit', handleFormSubmit);
     searchInput.addEventListener('input', filterTickets);
     
     // Match selection change listener for auto-population
     document.getElementById('matchNumber').addEventListener('change', handleMatchSelection);
+    
+    // Mobile-specific features
+    initializeMobileFeatures();
     
     // Filter event listeners
     document.getElementById('userFilter').addEventListener('change', filterTickets);
@@ -404,6 +412,188 @@ async function deleteTicket(ticketId) {
 
 // Note: Match number, date, and venue validation is now handled by the match lookup dropdown
 // The dropdown ensures users can only select valid FIFA 2026 matches with correct dates and venues
+
+// PWA Initialization
+function initializePWA() {
+    // Register service worker
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/static/sw.js')
+            .then((registration) => {
+                console.log('✅ Service Worker registered:', registration);
+            })
+            .catch((error) => {
+                console.log('❌ Service Worker registration failed:', error);
+            });
+    }
+    
+    // Add to home screen prompt
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        showInstallPrompt();
+    });
+}
+
+// Mobile Features
+function initializeMobileFeatures() {
+    // Touch-friendly interactions
+    addTouchGestures();
+    
+    // Mobile viewport optimization
+    optimizeForMobile();
+    
+    // Pull-to-refresh
+    addPullToRefresh();
+}
+
+// Touch Gestures
+function addTouchGestures() {
+    let startX, startY, endX, endY;
+    
+    document.addEventListener('touchstart', (e) => {
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+    });
+    
+    document.addEventListener('touchend', (e) => {
+        endX = e.changedTouches[0].clientX;
+        endY = e.changedTouches[0].clientY;
+        
+        const diffX = startX - endX;
+        const diffY = startY - endY;
+        
+        // Swipe left to delete (on ticket cards)
+        if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
+            const ticketCard = e.target.closest('.ticket-card');
+            if (ticketCard && diffX > 0) {
+                // Swipe left - show delete option
+                showSwipeDelete(ticketCard);
+            }
+        }
+    });
+}
+
+// Mobile Optimizations
+function optimizeForMobile() {
+    // Remove 300ms tap delay
+    if ('ontouchstart' in window) {
+        document.addEventListener('touchstart', () => {}, true);
+    }
+    
+    // Optimize viewport for mobile
+    const viewport = document.querySelector('meta[name="viewport"]');
+    if (viewport) {
+        viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+    }
+}
+
+// Pull to Refresh
+function addPullToRefresh() {
+    let startY = 0;
+    let pullDistance = 0;
+    const pullThreshold = 100;
+    
+    document.addEventListener('touchstart', (e) => {
+        if (window.scrollY === 0) {
+            startY = e.touches[0].clientY;
+        }
+    });
+    
+    document.addEventListener('touchmove', (e) => {
+        if (window.scrollY === 0 && startY > 0) {
+            pullDistance = e.touches[0].clientY - startY;
+            
+            if (pullDistance > 0) {
+                e.preventDefault();
+                // Visual feedback for pull-to-refresh
+                if (pullDistance > pullThreshold) {
+                    showPullToRefreshIndicator();
+                }
+            }
+        }
+    });
+    
+    document.addEventListener('touchend', () => {
+        if (pullDistance > pullThreshold) {
+            // Trigger refresh
+            location.reload();
+        }
+        startY = 0;
+        pullDistance = 0;
+        hidePullToRefreshIndicator();
+    });
+}
+
+// Install Prompt
+function showInstallPrompt() {
+    // Create install button
+    const installBtn = document.createElement('button');
+    installBtn.className = 'fixed bottom-20 right-4 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+    installBtn.innerHTML = '📱 Install App';
+    installBtn.onclick = () => {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then((choiceResult) => {
+            if (choiceResult.outcome === 'accepted') {
+                console.log('✅ User accepted the install prompt');
+            }
+            deferredPrompt = null;
+            installBtn.remove();
+        });
+    };
+    document.body.appendChild(installBtn);
+    
+    // Auto-hide after 10 seconds
+    setTimeout(() => {
+        if (installBtn.parentNode) {
+            installBtn.remove();
+        }
+    }, 10000);
+}
+
+// Swipe Delete
+function showSwipeDelete(card) {
+    // Add visual feedback for swipe-to-delete
+    card.style.transform = 'translateX(-50px)';
+    card.style.backgroundColor = '#fee2e2';
+    
+    // Show delete confirmation
+    setTimeout(() => {
+        if (confirm('Delete this ticket?')) {
+            const ticketId = card.dataset.ticketId;
+            if (ticketId) {
+                deleteTicket(ticketId);
+            }
+        }
+        card.style.transform = '';
+        card.style.backgroundColor = '';
+    }, 300);
+}
+
+// Pull to Refresh Indicators
+function showPullToRefreshIndicator() {
+    // Visual indicator for pull-to-refresh
+    console.log('Pull to refresh...');
+}
+
+function hidePullToRefreshIndicator() {
+    // Hide pull-to-refresh indicator
+    console.log('Release to refresh');
+}
+
+// Modern Toast Notifications
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `toast ${type} slide-in`;
+    toast.textContent = message;
+    
+    document.body.appendChild(toast);
+    
+    // Auto-remove after 3 seconds
+    setTimeout(() => {
+        toast.remove();
+    }, 3000);
+}
 
 // Utility functions
 function escapeHtml(text) {
