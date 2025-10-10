@@ -3,6 +3,10 @@ import { User, Ticket, Match, LoginCredentials, RegisterCredentials, TicketFormD
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
+// Debug log to see what URL is being used
+console.log('API_BASE_URL:', API_BASE_URL);
+console.log('NEXT_PUBLIC_API_URL env var:', process.env.NEXT_PUBLIC_API_URL);
+
 export const api = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true, // Important for session cookies
