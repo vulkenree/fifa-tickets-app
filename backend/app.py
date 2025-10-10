@@ -493,6 +493,21 @@ def get_matches():
     sorted_matches = sorted(matches, key=lambda m: int(m.match_number.replace('M', '')))
     return jsonify([m.to_dict() for m in sorted_matches])
 
+@app.route('/api/debug/matches', methods=['GET'])
+def debug_matches():
+    """Debug endpoint to check specific match data"""
+    match_numbers = request.args.get('matches', 'M70,M71,M72,M73,M74,M75').split(',')
+    matches = Match.query.filter(Match.match_number.in_(match_numbers)).all()
+    result = []
+    for match in matches:
+        result.append({
+            'match_number': match.match_number,
+            'date': match.date.strftime('%Y-%m-%d'),
+            'date_raw': str(match.date),
+            'venue': match.venue
+        })
+    return jsonify(result)
+
 @app.route('/api/matches/<match_number>', methods=['GET'])
 def get_match_details(match_number):
     """Get date and venue for a specific match number"""
