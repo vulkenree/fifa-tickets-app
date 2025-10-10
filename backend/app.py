@@ -431,7 +431,15 @@ def init_match_data():
     """Initialize FIFA 2026 match schedule data from CSV if not already loaded or if data needs correction"""
     csv_path = os.path.join(os.path.dirname(__file__), 'data', 'fifa_match_schedule.csv')
     
-    if Match.query.count() == 0:
+    # Force reload all match data to fix timezone issues
+    print("🔄 Force reloading all match data to fix timezone issues...")
+    
+    # Delete all existing matches
+    Match.query.delete()
+    db.session.commit()
+    print("🗑️  Deleted all existing match records")
+    
+    if True:  # Always reload from CSV
         # Load data from CSV if no matches exist
         try:
             with open(csv_path, 'r') as f:
@@ -450,54 +458,11 @@ def init_match_data():
                     db.session.add(match)
                     match_count += 1
                 db.session.commit()
-                print(f"✅ Loaded {match_count} FIFA 2026 matches from CSV")
+                print(f"✅ Loaded {match_count} FIFA 2026 matches from CSV with timezone-safe parsing")
         except FileNotFoundError:
             print(f"⚠️  Warning: Match schedule CSV not found at {csv_path}")
         except Exception as e:
             print(f"❌ Error loading match data: {e}")
-    else:
-        # Check if existing data needs correction
-        print(f"✅ Match schedule already loaded ({Match.query.count()} matches)")
-        
-        # Check for known incorrect data patterns and fix them
-        try:
-            with open(csv_path, 'r') as f:
-                reader = csv.DictReader(f)
-                corrected_matches = {}
-                for row in reader:
-                    # Parse date explicitly to avoid timezone issues
-                    date_parts = row['date'].split('-')
-                    date_obj = datetime(int(date_parts[0]), int(date_parts[1]), int(date_parts[2])).date()
-                    
-                    corrected_matches[row['match_number']] = {
-                        'date': date_obj,
-                        'venue': row['venue']
-                    }
-                
-                # Check and update incorrect data
-                updates_made = 0
-                for match_number, corrected_data in corrected_matches.items():
-                    match = Match.query.filter_by(match_number=match_number).first()
-                    if match:
-                        # Check if date or venue needs correction
-                        if match.date != corrected_data['date'] or match.venue != corrected_data['venue']:
-                            old_date = match.date
-                            old_venue = match.venue
-                            match.date = corrected_data['date']
-                            match.venue = corrected_data['venue']
-                            updates_made += 1
-                            print(f"📝 Corrected {match_number}: {old_date} at {old_venue} → {corrected_data['date']} at {corrected_data['venue']}")
-                
-                if updates_made > 0:
-                    db.session.commit()
-                    print(f"✅ Corrected {updates_made} match records with updated FIFA 2026 schedule")
-                else:
-                    print("✅ All match data is already correct")
-                    
-        except FileNotFoundError:
-            print(f"⚠️  Warning: Match schedule CSV not found at {csv_path}")
-        except Exception as e:
-            print(f"❌ Error checking/correcting match data: {e}")
 
 @app.route('/api/matches', methods=['GET'])
 def get_matches():
