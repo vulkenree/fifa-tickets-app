@@ -162,13 +162,31 @@ export default function DashboardPage() {
         bValue = parseISO(b.date).getTime();
         break;
       case 'quantity':
+        aValue = a.quantity || 0;
+        bValue = b.quantity || 0;
+        break;
       case 'ticket_price':
-        aValue = a[sortColumn] || 0;
-        bValue = b[sortColumn] || 0;
+        aValue = a.ticket_price || 0;
+        bValue = b.ticket_price || 0;
+        break;
+      case 'username':
+        aValue = a.username?.toString().toLowerCase() || '';
+        bValue = b.username?.toString().toLowerCase() || '';
+        break;
+      case 'name':
+        aValue = a.name?.toString().toLowerCase() || '';
+        bValue = b.name?.toString().toLowerCase() || '';
+        break;
+      case 'venue':
+        aValue = a.venue?.toString().toLowerCase() || '';
+        bValue = b.venue?.toString().toLowerCase() || '';
+        break;
+      case 'ticket_category':
+        aValue = a.ticket_category?.toString().toLowerCase() || '';
+        bValue = b.ticket_category?.toString().toLowerCase() || '';
         break;
       default:
-        aValue = a[sortColumn]?.toString().toLowerCase() || '';
-        bValue = b[sortColumn]?.toString().toLowerCase() || '';
+        return 0;
     }
     
     if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
