@@ -16,7 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { Ticket, Match, TicketFormData } from '@/lib/types';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 
 const ticketSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -469,7 +469,7 @@ export default function DashboardPage() {
                         <TableCell>{ticket.username}</TableCell>
                         <TableCell>{ticket.name}</TableCell>
                         <TableCell>{ticket.match_number}</TableCell>
-                        <TableCell>{format(new Date(ticket.date), 'MMM dd, yyyy')}</TableCell>
+                        <TableCell>{format(parseISO(ticket.date), 'MMM dd, yyyy')}</TableCell>
                         <TableCell>{ticket.venue}</TableCell>
                         <TableCell>{ticket.ticket_category}</TableCell>
                         <TableCell>{ticket.quantity}</TableCell>
