@@ -1,37 +1,14 @@
 import axios from 'axios';
 import { User, Ticket, Match, LoginCredentials, RegisterCredentials, TicketFormData } from './types';
 
-// Function to get API base URL dynamically
-const getApiBaseUrl = () => {
-  // Check if we have the production environment variable set
-  const hasProductionApiUrl = process.env.NEXT_PUBLIC_API_URL && 
-    process.env.NEXT_PUBLIC_API_URL.includes('railway.app');
-  
-  const url = hasProductionApiUrl 
-    ? process.env.NEXT_PUBLIC_API_URL
-    : 'http://localhost:8000';
-  
-  console.log('getApiBaseUrl called - API_BASE_URL:', url);
-  console.log('NEXT_PUBLIC_API_URL env var:', process.env.NEXT_PUBLIC_API_URL);
-  console.log('All env vars:', Object.keys(process.env).filter(key => key.includes('API')));
-  console.log('Current location:', typeof window !== 'undefined' ? window.location.href : 'server-side');
-  console.log('Has production API URL:', hasProductionApiUrl);
-  return url;
-};
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 export const api = axios.create({
-  baseURL: getApiBaseUrl(),
+  baseURL: API_BASE_URL,
   withCredentials: true, // Important for session cookies
   headers: {
     'Content-Type': 'application/json',
   },
-});
-
-// Override the baseURL for each request to ensure it's always current
-api.interceptors.request.use((config) => {
-  config.baseURL = getApiBaseUrl();
-  console.log('Request interceptor - using baseURL:', config.baseURL);
-  return config;
 });
 
 // Auth API
