@@ -197,35 +197,70 @@ function populateFilterDropdowns() {
 }
 
 function renderTickets(ticketsToRender = tickets) {
+    const mobileContainer = document.getElementById('mobileTicketsContainer');
+    
     if (ticketsToRender.length === 0) {
         ticketsTableBody.innerHTML = '';
+        if (mobileContainer) mobileContainer.innerHTML = '';
         noTicketsMessage.classList.remove('hidden');
         return;
     }
     
     noTicketsMessage.classList.add('hidden');
     
+    // Desktop table view
     ticketsTableBody.innerHTML = ticketsToRender.map(ticket => {
         const canEdit = ticket.user_id === currentUserId;
         return `
-        <tr>
-            <td><span class="username-badge">${escapeHtml(ticket.username)}</span></td>
-            <td>${escapeHtml(ticket.name)}</td>
-            <td><span class="match-number">${escapeHtml(ticket.match_number)}</span></td>
-            <td>${formatDate(ticket.date)}</td>
-            <td>${escapeHtml(ticket.venue)}</td>
-            <td><span class="category-badge">${escapeHtml(ticket.ticket_category)}</span></td>
-            <td>${ticket.quantity}</td>
-            <td>${escapeHtml(ticket.ticket_info || '-')}</td>
-            <td>${ticket.ticket_price ? `$${parseFloat(ticket.ticket_price).toFixed(2)}` : '-'}</td>
-            <td class="actions">
-                ${canEdit ? `<button class="btn btn-warning btn-sm" onclick="editTicket(${ticket.id})">Edit</button>` : ''}
-                ${canEdit ? `<button class="btn btn-danger btn-sm" onclick="deleteTicket(${ticket.id})">Delete</button>` : ''}
-                ${!canEdit ? '<span class="text-muted">View Only</span>' : ''}
+        <tr class="hover:bg-gray-50">
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${escapeHtml(ticket.username)}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${escapeHtml(ticket.name)}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${escapeHtml(ticket.match_number)}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${formatDate(ticket.date)}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${escapeHtml(ticket.venue)}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${escapeHtml(ticket.ticket_category)}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${ticket.quantity}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${ticket.ticket_price ? `$${parseFloat(ticket.ticket_price).toFixed(2)}` : '-'}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                ${canEdit ? `<button onclick="editTicket(${ticket.id})" class="text-blue-600 hover:text-blue-900 mr-3">Edit</button>` : ''}
+                ${canEdit ? `<button onclick="deleteTicket(${ticket.id})" class="text-red-600 hover:text-red-900">Delete</button>` : ''}
+                ${!canEdit ? '<span class="text-gray-400">View Only</span>' : ''}
             </td>
         </tr>
     `;
     }).join('');
+    
+    // Mobile card view
+    if (mobileContainer) {
+        mobileContainer.innerHTML = ticketsToRender.map(ticket => {
+            const canEdit = ticket.user_id === currentUserId;
+            return `
+            <div class="product-card">
+                <div class="product-image">
+                    <div class="text-gray-400 text-4xl">🎫</div>
+                </div>
+                <div class="product-info">
+                    <h3 class="product-title">${escapeHtml(ticket.name)}</h3>
+                    <div class="product-details">
+                        <div><strong>Match:</strong> ${escapeHtml(ticket.match_number)}</div>
+                        <div><strong>Date:</strong> ${formatDate(ticket.date)}</div>
+                        <div><strong>Venue:</strong> ${escapeHtml(ticket.venue)}</div>
+                        <div><strong>Category:</strong> ${escapeHtml(ticket.ticket_category)}</div>
+                        <div><strong>Quantity:</strong> ${ticket.quantity}</div>
+                        ${ticket.ticket_price ? `<div><strong>Price:</strong> $${parseFloat(ticket.ticket_price).toFixed(2)}</div>` : ''}
+                        <div><strong>Owner:</strong> ${escapeHtml(ticket.username)}</div>
+                    </div>
+                    <div class="flex justify-between items-center mt-3">
+                        ${canEdit ? `
+                            <button onclick="editTicket(${ticket.id})" class="text-blue-600 hover:text-blue-900 text-sm font-medium">Edit</button>
+                            <button onclick="deleteTicket(${ticket.id})" class="text-red-600 hover:text-red-900 text-sm font-medium">Delete</button>
+                        ` : '<span class="text-gray-400 text-sm">View Only</span>'}
+                    </div>
+                </div>
+            </div>
+        `;
+        }).join('');
+    }
 }
 
 function filterTickets() {
