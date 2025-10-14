@@ -42,8 +42,8 @@ export default function ProfilePage() {
   useEffect(() => {
     if (profile) {
       setFormData({
-        username: profile.username || '',
-        favorite_team: profile.favorite_team || '',
+        username: profile.data?.username || '',
+        favorite_team: profile.data?.favorite_team || '',
       });
     }
   }, [profile]);
@@ -204,19 +204,19 @@ export default function ProfilePage() {
             </form>
 
             {/* Profile Info */}
-            {profile && (
+            {profile?.data && (
               <div className="mt-8 pt-6 border-t border-gray-200">
                 <h3 className="text-sm font-medium text-gray-700 mb-3">Profile Information</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                   <div>
                     <span className="text-gray-500">Member since:</span>
                     <span className="ml-2 text-gray-900">
-                      {profile.created_at ? new Date(profile.created_at).toLocaleDateString() : 'Unknown'}
+                      {profile.data.created_at ? new Date(profile.data.created_at).toLocaleDateString() : 'Unknown'}
                     </span>
                   </div>
                   <div>
                     <span className="text-gray-500">User ID:</span>
-                    <span className="ml-2 text-gray-900">{profile.id}</span>
+                    <span className="ml-2 text-gray-900">{profile.data.id}</span>
                   </div>
                 </div>
               </div>

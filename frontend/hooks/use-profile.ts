@@ -25,7 +25,7 @@ export function useProfile() {
 
       try {
         const response = await profileApi.updateProfile(data);
-        mutateProfile(response.data, false); // Update local cache
+        mutateProfile(response, false); // Update local cache
         toast.success('Profile updated successfully!');
         return response.data;
       } catch (err: any) {
