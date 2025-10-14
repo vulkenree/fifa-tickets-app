@@ -706,22 +706,9 @@ def update_profile():
         
         data = request.get_json()
         
-        # Validate username if provided
+        # Username changes are not allowed
         if 'username' in data:
-            new_username = data['username'].strip()
-            if not new_username:
-                return jsonify({'error': 'Username cannot be empty'}), 400
-            
-            # Check if username is already taken by another user
-            existing_user = User.query.filter(
-                User.username == new_username,
-                User.id != user.id
-            ).first()
-            
-            if existing_user:
-                return jsonify({'error': 'Username already taken'}), 400
-            
-            user.username = new_username
+            return jsonify({'error': 'Username cannot be changed'}), 400
         
         # Update favorite team if provided
         if 'favorite_team' in data:

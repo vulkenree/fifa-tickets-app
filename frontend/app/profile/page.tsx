@@ -6,7 +6,7 @@ import { useProfile } from '@/hooks/use-profile';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { User, ArrowLeft, Save, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -29,12 +29,17 @@ const FIFA_2026_TEAMS = [
   'New Zealand',
 ];
 
+// Sort teams alphabetically and convert to options format for SearchableSelect
+const TEAM_OPTIONS = [
+  { value: 'none', label: 'No favorite team' },
+  ...FIFA_2026_TEAMS.sort().map(team => ({ value: team, label: team }))
+];
+
 export default function ProfilePage() {
   const { user, logout } = useAuth();
   const { profile, isLoading, isUpdating, error, updateProfile } = useProfile();
   
   const [formData, setFormData] = useState({
-    username: '',
     favorite_team: '',
   });
 
@@ -42,7 +47,6 @@ export default function ProfilePage() {
   useEffect(() => {
     if (profile) {
       setFormData({
-        username: profile.username || '',
         favorite_team: profile.favorite_team || 'none',
       });
     }
@@ -50,15 +54,9 @@ export default function ProfilePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formData.username.trim()) {
-      toast.error('Username is required');
-      return;
-    }
 
     try {
       await updateProfile({
-        username: formData.username.trim(),
         favorite_team: formData.favorite_team === 'none' ? undefined : formData.favorite_team,
       });
     } catch (err) {
@@ -130,7 +128,7 @@ export default function ProfilePage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Username Field */}
+              {/* Username Field - Read Only */}
               <div className="space-y-2">
                 <label htmlFor="username" className="text-sm font-medium text-gray-700">
                   Username
@@ -138,12 +136,14 @@ export default function ProfilePage() {
                 <Input
                   id="username"
                   type="text"
-                  value={formData.username}
-                  onChange={(e) => handleInputChange('username', e.target.value)}
-                  placeholder="Enter your username"
-                  required
+                  value={profile?.username || ''}
+                  readOnly
+                  className="bg-gray-50 cursor-not-allowed"
                   disabled={isUpdating}
                 />
+                <p className="text-xs text-gray-500">
+                  Username cannot be changed
+                </p>
               </div>
 
               {/* Favorite Team Field */}
@@ -151,23 +151,14 @@ export default function ProfilePage() {
                 <label htmlFor="favorite_team" className="text-sm font-medium text-gray-700">
                   Favorite FIFA 2026 Team
                 </label>
-                <Select
+                <SearchableSelect
+                  options={TEAM_OPTIONS}
                   value={formData.favorite_team}
-                  onValueChange={(value) => handleInputChange('favorite_team', value)}
-                  disabled={isUpdating}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select your favorite team (optional)" />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-60">
-                    <SelectItem value="none">No favorite team</SelectItem>
-                    {FIFA_2026_TEAMS.map((team) => (
-                      <SelectItem key={team} value={team}>
-                        {team}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  onChange={(value) => handleInputChange('favorite_team', value as string)}
+                  placeholder="Select your favorite team (optional)"
+                  searchPlaceholder="Search teams..."
+                  className="w-full"
+                />
                 <p className="text-xs text-gray-500">
                   Choose your favorite team for FIFA 2026 World Cup (optional)
                 </p>
