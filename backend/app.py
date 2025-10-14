@@ -63,7 +63,8 @@ llm_service = LLMService()
 CORS(app, 
      origins=[
          'http://localhost:3000',  # Local dev
-         os.environ.get('FRONTEND_URL', 'https://your-frontend.railway.app')
+         'https://fifa-tickets-frontendapp-production.up.railway.app',  # Production
+         os.environ.get('FRONTEND_URL', '')  # Custom domain if set
      ],
      supports_credentials=True,  # Allow cookies
      allow_headers=['Content-Type', 'Authorization'],
