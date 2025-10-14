@@ -76,3 +76,11 @@ export interface ProfileUpdateData {
   username?: string;
   favorite_team?: string;
 }
+
+export interface Venue {
+  name: string;
+  city: string;
+  country: string;
+  lat: number;
+  lng: number;
+}

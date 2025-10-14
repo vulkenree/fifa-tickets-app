@@ -746,6 +746,34 @@ with app.app_context():
         db.session.commit()
         print("Default admin user created: username='admin', password='admin123'")
 
+@app.route('/api/venues', methods=['GET'])
+def get_venues():
+    """Get all unique venues with coordinates"""
+    venues = [
+        # USA venues
+        {"name": "Atlanta", "city": "Atlanta", "country": "USA", "lat": 33.7490, "lng": -84.3880},
+        {"name": "Boston", "city": "Boston", "country": "USA", "lat": 42.3601, "lng": -71.0589},
+        {"name": "Dallas", "city": "Dallas", "country": "USA", "lat": 32.7767, "lng": -96.7970},
+        {"name": "Houston", "city": "Houston", "country": "USA", "lat": 29.7604, "lng": -95.3698},
+        {"name": "Kansas City", "city": "Kansas City", "country": "USA", "lat": 39.0997, "lng": -94.5786},
+        {"name": "Los Angeles", "city": "Los Angeles", "country": "USA", "lat": 34.0522, "lng": -118.2437},
+        {"name": "Miami", "city": "Miami", "country": "USA", "lat": 25.7617, "lng": -80.1918},
+        {"name": "New York/New Jersey", "city": "New York/New Jersey", "country": "USA", "lat": 40.7128, "lng": -74.0060},
+        {"name": "Philadelphia", "city": "Philadelphia", "country": "USA", "lat": 39.9526, "lng": -75.1652},
+        {"name": "San Francisco Bay Area", "city": "San Francisco Bay Area", "country": "USA", "lat": 37.7749, "lng": -122.4194},
+        {"name": "Seattle", "city": "Seattle", "country": "USA", "lat": 47.6062, "lng": -122.3321},
+        
+        # Canada venues
+        {"name": "Toronto", "city": "Toronto", "country": "Canada", "lat": 43.6532, "lng": -79.3832},
+        {"name": "Vancouver", "city": "Vancouver", "country": "Canada", "lat": 49.2827, "lng": -123.1207},
+        
+        # Mexico venues
+        {"name": "Guadalajara", "city": "Guadalajara", "country": "Mexico", "lat": 20.6597, "lng": -103.3496},
+        {"name": "Mexico City", "city": "Mexico City", "country": "Mexico", "lat": 19.4326, "lng": -99.1332},
+        {"name": "Monterrey", "city": "Monterrey", "country": "Mexico", "lat": 25.6866, "lng": -100.3161},
+    ]
+    return jsonify(venues)
+
 if __name__ == '__main__':
     # Only run development server if not in production
     if os.environ.get('FLASK_ENV') != 'production':

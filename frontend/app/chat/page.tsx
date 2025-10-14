@@ -21,7 +21,8 @@ import {
   Home,
   User,
   Bot,
-  Sparkles
+  Sparkles,
+  Map
 } from 'lucide-react';
 
 export default function ChatPage() {
@@ -161,6 +162,14 @@ export default function ChatPage() {
               >
                 <User size={16} />
                 <span>Profile</span>
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => window.location.href = '/venues'}
+                className="flex items-center space-x-2"
+              >
+                <Map size={16} />
+                <span>Venues</span>
               </Button>
               <span className="text-sm text-gray-600">
                 Welcome, <span className="font-medium text-gray-900">{user.username}</span>!

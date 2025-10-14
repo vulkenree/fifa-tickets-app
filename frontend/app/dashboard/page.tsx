@@ -19,7 +19,7 @@ import { toast } from 'sonner';
 import { Ticket, Match, TicketFormData } from '@/lib/types';
 import { format, parseISO } from 'date-fns';
 import { FloatingChatButton } from '@/components/chat/floating-button';
-import { Sparkles, Home, User } from 'lucide-react';
+import { Sparkles, Home, User, Map } from 'lucide-react';
 
 const ticketSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -293,6 +293,14 @@ export default function DashboardPage() {
                       >
                         <Sparkles size={16} />
                         <span>AI Assistant</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => window.location.href = '/venues'}
+                        className="flex items-center space-x-2"
+                      >
+                        <Map size={16} />
+                        <span>Venues</span>
                       </Button>
                       <span className="text-sm text-gray-600">
                         Welcome, <span className="font-medium text-gray-900">{user?.username}</span>!

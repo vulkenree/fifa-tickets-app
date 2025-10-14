@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { SearchableSelect } from '@/components/ui/searchable-select';
-import { User, ArrowLeft, Save, Loader2 } from 'lucide-react';
+import { User, ArrowLeft, Save, Loader2, Map } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 
@@ -106,6 +106,14 @@ export default function ProfilePage() {
                   Back to Dashboard
                 </Button>
               </Link>
+              <Button
+                variant="outline"
+                onClick={() => window.location.href = '/venues'}
+                className="flex items-center space-x-2"
+              >
+                <Map size={16} />
+                <span>Venues</span>
+              </Button>
               <span className="text-sm text-gray-600">
                 Welcome, <span className="font-medium text-gray-900">{user?.username}</span>!
               </span>

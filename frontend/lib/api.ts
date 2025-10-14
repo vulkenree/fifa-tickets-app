@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { User, Ticket, Match, LoginCredentials, RegisterCredentials, TicketFormData, ChatMessage, ChatConversation, ChatResponse, ProfileUpdateData } from './types';
+import { User, Ticket, Match, LoginCredentials, RegisterCredentials, TicketFormData, ChatMessage, ChatConversation, ChatResponse, ProfileUpdateData, Venue } from './types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -55,4 +55,9 @@ export const chatApi = {
 export const profileApi = {
   getProfile: () => api.get<User>('/api/profile'),
   updateProfile: (data: ProfileUpdateData) => api.put<User>('/api/profile', data),
+};
+
+// Venues API
+export const venuesApi = {
+  getVenues: () => api.get<Venue[]>('/api/venues'),
 };
