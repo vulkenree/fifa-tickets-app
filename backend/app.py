@@ -1,11 +1,12 @@
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash
 from flask_cors import CORS
-from models import db, User, Ticket, Match
+from models import db, User, Ticket, Match, ChatConversation, ChatMessage
 from datetime import datetime, date
 import re
 import os
 import secrets
 import csv
+from llm_service import LLMService
 
 # FIFA 2026 World Cup date range
 FIFA_MIN_DATE = date(2026, 6, 11)
@@ -54,6 +55,9 @@ else:
 
 # Initialize database
 db.init_app(app)
+
+# Initialize LLM service
+llm_service = LLMService()
 
 # Configure CORS for Next.js frontend
 CORS(app, 
@@ -494,6 +498,182 @@ def get_match_details(match_number):
     if match:
         return jsonify(match.to_dict())
     return jsonify({'error': 'Match not found'}), 404
+
+# Chat API endpoints
+@app.route('/api/chat/message', methods=['POST'])
+@login_required
+def send_chat_message():
+    """Send a message to the AI assistant"""
+    data = request.get_json()
+    message = data.get('message', '').strip()
+    conversation_id = data.get('conversation_id')
+    
+    if not message:
+        return jsonify({'error': 'Message is required'}), 400
+    
+    try:
+        # Get or create conversation
+        if conversation_id:
+            conversation = ChatConversation.query.filter_by(
+                id=conversation_id, 
+                user_id=session['user_id']
+            ).first()
+            if not conversation:
+                return jsonify({'error': 'Conversation not found'}), 404
+        else:
+            # Create new conversation
+            conversation = ChatConversation(
+                user_id=session['user_id'],
+                title=f"Chat {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+            )
+            db.session.add(conversation)
+            db.session.flush()  # Get the ID
+        
+        # Save user message
+        user_message = ChatMessage(
+            conversation_id=conversation.id,
+            role='user',
+            content=message
+        )
+        db.session.add(user_message)
+        
+        # Get AI response
+        response = llm_service.process_message(
+            user_id=session['user_id'],
+            message=message,
+            conversation_id=conversation.id
+        )
+        
+        # Save AI response
+        ai_message = ChatMessage(
+            conversation_id=conversation.id,
+            role='assistant',
+            content=response['content']
+        )
+        db.session.add(ai_message)
+        
+        # Update conversation timestamp
+        conversation.updated_at = datetime.utcnow()
+        
+        db.session.commit()
+        
+        return jsonify({
+            'conversation_id': conversation.id,
+            'response': response['content'],
+            'function_called': response.get('function_called'),
+            'function_result': response.get('function_result'),
+            'error': response.get('error', False)
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error in send_chat_message: {e}")
+        return jsonify({'error': 'Failed to process message'}), 500
+
+@app.route('/api/chat/conversations', methods=['GET'])
+@login_required
+def get_chat_conversations():
+    """Get all conversations for the current user"""
+    try:
+        conversations = ChatConversation.query.filter_by(
+            user_id=session['user_id']
+        ).order_by(ChatConversation.updated_at.desc()).all()
+        
+        return jsonify([conv.to_dict() for conv in conversations])
+    except Exception as e:
+        print(f"Error in get_chat_conversations: {e}")
+        return jsonify({'error': 'Failed to get conversations'}), 500
+
+@app.route('/api/chat/conversations/<int:conversation_id>', methods=['GET'])
+@login_required
+def get_chat_conversation(conversation_id):
+    """Get a specific conversation with its messages"""
+    try:
+        conversation = ChatConversation.query.filter_by(
+            id=conversation_id,
+            user_id=session['user_id']
+        ).first()
+        
+        if not conversation:
+            return jsonify({'error': 'Conversation not found'}), 404
+        
+        messages = ChatMessage.query.filter_by(
+            conversation_id=conversation_id
+        ).order_by(ChatMessage.created_at.asc()).all()
+        
+        return jsonify({
+            'conversation': conversation.to_dict(),
+            'messages': [msg.to_dict() for msg in messages]
+        })
+    except Exception as e:
+        print(f"Error in get_chat_conversation: {e}")
+        return jsonify({'error': 'Failed to get conversation'}), 500
+
+@app.route('/api/chat/conversations/<int:conversation_id>', methods=['DELETE'])
+@login_required
+def delete_chat_conversation(conversation_id):
+    """Delete a conversation"""
+    try:
+        conversation = ChatConversation.query.filter_by(
+            id=conversation_id,
+            user_id=session['user_id']
+        ).first()
+        
+        if not conversation:
+            return jsonify({'error': 'Conversation not found'}), 404
+        
+        db.session.delete(conversation)
+        db.session.commit()
+        
+        return jsonify({'message': 'Conversation deleted successfully'})
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error in delete_chat_conversation: {e}")
+        return jsonify({'error': 'Failed to delete conversation'}), 500
+
+@app.route('/api/chat/conversations/<int:conversation_id>/save', methods=['POST'])
+@login_required
+def save_chat_conversation(conversation_id):
+    """Mark a conversation as saved"""
+    try:
+        conversation = ChatConversation.query.filter_by(
+            id=conversation_id,
+            user_id=session['user_id']
+        ).first()
+        
+        if not conversation:
+            return jsonify({'error': 'Conversation not found'}), 404
+        
+        conversation.is_saved = True
+        db.session.commit()
+        
+        return jsonify({'message': 'Conversation saved successfully'})
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error in save_chat_conversation: {e}")
+        return jsonify({'error': 'Failed to save conversation'}), 500
+
+@app.route('/api/chat/conversations/<int:conversation_id>/unsave', methods=['POST'])
+@login_required
+def unsave_chat_conversation(conversation_id):
+    """Mark a conversation as not saved"""
+    try:
+        conversation = ChatConversation.query.filter_by(
+            id=conversation_id,
+            user_id=session['user_id']
+        ).first()
+        
+        if not conversation:
+            return jsonify({'error': 'Conversation not found'}), 404
+        
+        conversation.is_saved = False
+        db.session.commit()
+        
+        return jsonify({'message': 'Conversation unsaved successfully'})
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error in unsave_chat_conversation: {e}")
+        return jsonify({'error': 'Failed to unsave conversation'}), 500
 
 # Initialize database and data when app starts (works in both dev and production)
 with app.app_context():

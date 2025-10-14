@@ -18,6 +18,8 @@ import { SearchableSelect } from '@/components/ui/searchable-select';
 import { toast } from 'sonner';
 import { Ticket, Match, TicketFormData } from '@/lib/types';
 import { format, parseISO } from 'date-fns';
+import { FloatingChatButton } from '@/components/chat/floating-button';
+import { Sparkles } from 'lucide-react';
 
 const ticketSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -268,6 +270,14 @@ export default function DashboardPage() {
               <h1 className="text-xl font-bold text-gray-900">FIFA 2026 Tickets</h1>
             </div>
             <div className="flex items-center space-x-4">
+              <Button
+                variant="outline"
+                onClick={() => window.location.href = '/chat'}
+                className="flex items-center space-x-2"
+              >
+                <Sparkles size={16} />
+                <span>AI Assistant</span>
+              </Button>
               <span className="text-sm text-gray-600">
                 Welcome, <span className="font-medium text-gray-900">{user?.username}</span>!
               </span>
@@ -622,6 +632,9 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Floating Chat Button */}
+      <FloatingChatButton />
     </div>
   );
 }

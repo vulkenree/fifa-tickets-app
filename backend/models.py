@@ -30,6 +30,9 @@ class User(db.Model):
     # Relationship to tickets
     tickets = db.relationship('Ticket', backref='user', lazy=True, cascade='all, delete-orphan')
     
+    # Relationship to chat conversations
+    chat_conversations = db.relationship('ChatConversation', backref='user', lazy=True, cascade='all, delete-orphan')
+    
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
     
@@ -72,3 +75,49 @@ class Ticket(db.Model):
     
     def __repr__(self):
         return f'<Ticket {self.match_number} - {self.name}>'
+
+class ChatConversation(db.Model):
+    """Chat conversation metadata"""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    title = db.Column(db.String(200), nullable=True)  # Auto-generated or user-set title
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    is_saved = db.Column(db.Boolean, default=False)  # Whether user saved this conversation
+    
+    # Relationship to messages
+    messages = db.relationship('ChatMessage', backref='conversation', lazy=True, cascade='all, delete-orphan')
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'title': self.title,
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M') if self.created_at else None,
+            'updated_at': self.updated_at.strftime('%Y-%m-%d %H:%M') if self.updated_at else None,
+            'is_saved': self.is_saved,
+            'message_count': len(self.messages)
+        }
+    
+    def __repr__(self):
+        return f'<ChatConversation {self.id} - {self.title}>'
+
+class ChatMessage(db.Model):
+    """Individual chat messages"""
+    id = db.Column(db.Integer, primary_key=True)
+    conversation_id = db.Column(db.Integer, db.ForeignKey('chat_conversation.id'), nullable=False)
+    role = db.Column(db.String(20), nullable=False)  # 'user', 'assistant', 'system'
+    content = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'conversation_id': self.conversation_id,
+            'role': self.role,
+            'content': self.content,
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S') if self.created_at else None
+        }
+    
+    def __repr__(self):
+        return f'<ChatMessage {self.id} - {self.role}>'

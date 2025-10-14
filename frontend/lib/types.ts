@@ -43,3 +43,29 @@ export interface TicketFormData {
   ticket_info?: string;
   ticket_price?: number | undefined;
 }
+
+export interface ChatMessage {
+  id: number;
+  conversation_id: number;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  created_at: string;
+}
+
+export interface ChatConversation {
+  id: number;
+  user_id: number;
+  title: string;
+  created_at: string;
+  updated_at: string;
+  is_saved: boolean;
+  message_count: number;
+}
+
+export interface ChatResponse {
+  conversation_id: number;
+  response: string;
+  function_called?: string;
+  function_result?: any;
+  error: boolean;
+}

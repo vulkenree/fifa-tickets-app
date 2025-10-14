@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { User, Ticket, Match, LoginCredentials, RegisterCredentials, TicketFormData } from './types';
+import { User, Ticket, Match, LoginCredentials, RegisterCredentials, TicketFormData, ChatMessage, ChatConversation, ChatResponse } from './types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -34,4 +34,19 @@ export const ticketsApi = {
 export const matchesApi = {
   getAll: () => api.get<Match[]>('/api/matches'),
   getByNumber: (matchNumber: string) => api.get<Match>(`/api/matches/${matchNumber}`),
+};
+
+// Chat API
+export const chatApi = {
+  sendMessage: (message: string, conversationId?: number) =>
+    api.post<ChatResponse>('/api/chat/message', { message, conversation_id: conversationId }),
+  getConversations: () => api.get<ChatConversation[]>('/api/chat/conversations'),
+  getConversation: (conversationId: number) => 
+    api.get<{ conversation: ChatConversation; messages: ChatMessage[] }>(`/api/chat/conversations/${conversationId}`),
+  deleteConversation: (conversationId: number) => 
+    api.delete(`/api/chat/conversations/${conversationId}`),
+  saveConversation: (conversationId: number) => 
+    api.post(`/api/chat/conversations/${conversationId}/save`),
+  unsaveConversation: (conversationId: number) => 
+    api.post(`/api/chat/conversations/${conversationId}/unsave`),
 };
