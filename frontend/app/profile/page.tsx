@@ -42,8 +42,8 @@ export default function ProfilePage() {
   useEffect(() => {
     if (profile) {
       setFormData({
-        username: profile.data?.username || '',
-        favorite_team: profile.data?.favorite_team || '',
+        username: profile.username || '',
+        favorite_team: profile.favorite_team || 'none',
       });
     }
   }, [profile]);
@@ -59,7 +59,7 @@ export default function ProfilePage() {
     try {
       await updateProfile({
         username: formData.username.trim(),
-        favorite_team: formData.favorite_team || undefined,
+        favorite_team: formData.favorite_team === 'none' ? undefined : formData.favorite_team,
       });
     } catch (err) {
       // Error is already handled in the hook
@@ -160,7 +160,7 @@ export default function ProfilePage() {
                     <SelectValue placeholder="Select your favorite team (optional)" />
                   </SelectTrigger>
                   <SelectContent className="max-h-60">
-                    <SelectItem value="">No favorite team</SelectItem>
+                    <SelectItem value="none">No favorite team</SelectItem>
                     {FIFA_2026_TEAMS.map((team) => (
                       <SelectItem key={team} value={team}>
                         {team}
@@ -204,19 +204,19 @@ export default function ProfilePage() {
             </form>
 
             {/* Profile Info */}
-            {profile?.data && (
+            {profile && (
               <div className="mt-8 pt-6 border-t border-gray-200">
                 <h3 className="text-sm font-medium text-gray-700 mb-3">Profile Information</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                   <div>
                     <span className="text-gray-500">Member since:</span>
                     <span className="ml-2 text-gray-900">
-                      {profile.data.created_at ? new Date(profile.data.created_at).toLocaleDateString() : 'Unknown'}
+                      {profile.created_at ? new Date(profile.created_at).toLocaleDateString() : 'Unknown'}
                     </span>
                   </div>
                   <div>
                     <span className="text-gray-500">User ID:</span>
-                    <span className="ml-2 text-gray-900">{profile.data.id}</span>
+                    <span className="ml-2 text-gray-900">{profile.id}</span>
                   </div>
                 </div>
               </div>

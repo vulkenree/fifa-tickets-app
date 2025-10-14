@@ -10,13 +10,15 @@ export function useProfile() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { data: profile, isLoading, mutate: mutateProfile } = useSWR(
+  const { data: profileResponse, isLoading, mutate: mutateProfile } = useSWR(
     '/api/profile',
     profileApi.getProfile,
     {
       revalidateOnFocus: false,
     }
   );
+
+  const profile = profileResponse?.data;
 
   const updateProfile = useCallback(
     async (data: ProfileUpdateData) => {
