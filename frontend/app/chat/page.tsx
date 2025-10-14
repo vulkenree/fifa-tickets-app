@@ -18,8 +18,9 @@ import {
   MessageSquare, 
   Plus, 
   MoreVertical,
-  Bot,
+  Home,
   User,
+  Bot,
   Sparkles
 } from 'lucide-react';
 
@@ -145,6 +146,22 @@ export default function ChatPage() {
               <h1 className="text-xl font-bold text-gray-900">AI Assistant</h1>
             </div>
             <div className="flex items-center space-x-4">
+              <Button
+                variant="outline"
+                onClick={() => window.location.href = '/dashboard'}
+                className="flex items-center space-x-2"
+              >
+                <Home size={16} />
+                <span>Home</span>
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => window.location.href = '/profile'}
+                className="flex items-center space-x-2"
+              >
+                <User size={16} />
+                <span>Profile</span>
+              </Button>
               <span className="text-sm text-gray-600">
                 Welcome, <span className="font-medium text-gray-900">{user.username}</span>!
               </span>

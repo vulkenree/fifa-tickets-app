@@ -675,6 +675,75 @@ def unsave_chat_conversation(conversation_id):
         print(f"Error in unsave_chat_conversation: {e}")
         return jsonify({'error': 'Failed to unsave conversation'}), 500
 
+# Profile API endpoints
+@app.route('/api/profile', methods=['GET'])
+@login_required
+def get_profile():
+    """Get current user profile"""
+    try:
+        user = User.query.get(session['user_id'])
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        return jsonify({
+            'id': user.id,
+            'username': user.username,
+            'favorite_team': user.favorite_team,
+            'created_at': user.created_at.strftime('%Y-%m-%d %H:%M') if user.created_at else None
+        })
+    except Exception as e:
+        print(f"Error in get_profile: {e}")
+        return jsonify({'error': 'Failed to get profile'}), 500
+
+@app.route('/api/profile', methods=['PUT'])
+@login_required
+def update_profile():
+    """Update user profile"""
+    try:
+        user = User.query.get(session['user_id'])
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        data = request.get_json()
+        
+        # Validate username if provided
+        if 'username' in data:
+            new_username = data['username'].strip()
+            if not new_username:
+                return jsonify({'error': 'Username cannot be empty'}), 400
+            
+            # Check if username is already taken by another user
+            existing_user = User.query.filter(
+                User.username == new_username,
+                User.id != user.id
+            ).first()
+            
+            if existing_user:
+                return jsonify({'error': 'Username already taken'}), 400
+            
+            user.username = new_username
+        
+        # Update favorite team if provided
+        if 'favorite_team' in data:
+            favorite_team = data['favorite_team']
+            if favorite_team and len(favorite_team) > 100:
+                return jsonify({'error': 'Favorite team name too long'}), 400
+            user.favorite_team = favorite_team if favorite_team else None
+        
+        db.session.commit()
+        
+        return jsonify({
+            'id': user.id,
+            'username': user.username,
+            'favorite_team': user.favorite_team,
+            'created_at': user.created_at.strftime('%Y-%m-%d %H:%M') if user.created_at else None
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error in update_profile: {e}")
+        return jsonify({'error': 'Failed to update profile'}), 500
+
 # Initialize database and data when app starts (works in both dev and production)
 with app.app_context():
     db.create_all()

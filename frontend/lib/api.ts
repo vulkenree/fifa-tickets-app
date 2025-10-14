@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { User, Ticket, Match, LoginCredentials, RegisterCredentials, TicketFormData, ChatMessage, ChatConversation, ChatResponse } from './types';
+import { User, Ticket, Match, LoginCredentials, RegisterCredentials, TicketFormData, ChatMessage, ChatConversation, ChatResponse, ProfileUpdateData } from './types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -41,12 +41,18 @@ export const chatApi = {
   sendMessage: (message: string, conversationId?: number) =>
     api.post<ChatResponse>('/api/chat/message', { message, conversation_id: conversationId }),
   getConversations: () => api.get<ChatConversation[]>('/api/chat/conversations'),
-  getConversation: (conversationId: number) => 
+  getConversation: (conversationId: number) =>
     api.get<{ conversation: ChatConversation; messages: ChatMessage[] }>(`/api/chat/conversations/${conversationId}`),
-  deleteConversation: (conversationId: number) => 
+  deleteConversation: (conversationId: number) =>
     api.delete(`/api/chat/conversations/${conversationId}`),
-  saveConversation: (conversationId: number) => 
+  saveConversation: (conversationId: number) =>
     api.post(`/api/chat/conversations/${conversationId}/save`),
-  unsaveConversation: (conversationId: number) => 
+  unsaveConversation: (conversationId: number) =>
     api.post(`/api/chat/conversations/${conversationId}/unsave`),
+};
+
+// Profile API
+export const profileApi = {
+  getProfile: () => api.get<User>('/api/profile'),
+  updateProfile: (data: ProfileUpdateData) => api.put<User>('/api/profile', data),
 };

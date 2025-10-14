@@ -1,6 +1,8 @@
 export interface User {
   id: number;
   username: string;
+  favorite_team?: string;
+  created_at?: string;
 }
 
 export interface Ticket {
@@ -68,4 +70,9 @@ export interface ChatResponse {
   function_called?: string;
   function_result?: any;
   error: boolean;
+}
+
+export interface ProfileUpdateData {
+  username?: string;
+  favorite_team?: string;
 }

@@ -25,6 +25,7 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)  # Increased for scrypt hashes
+    favorite_team = db.Column(db.String(100), nullable=True)  # FIFA 2026 favorite team
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Relationship to tickets

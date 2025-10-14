@@ -19,7 +19,7 @@ import { toast } from 'sonner';
 import { Ticket, Match, TicketFormData } from '@/lib/types';
 import { format, parseISO } from 'date-fns';
 import { FloatingChatButton } from '@/components/chat/floating-button';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, Home, User } from 'lucide-react';
 
 const ticketSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -269,22 +269,38 @@ export default function DashboardPage() {
             <div className="flex items-center space-x-3">
               <h1 className="text-xl font-bold text-gray-900">FIFA 2026 Tickets</h1>
             </div>
-            <div className="flex items-center space-x-4">
-              <Button
-                variant="outline"
-                onClick={() => window.location.href = '/chat'}
-                className="flex items-center space-x-2"
-              >
-                <Sparkles size={16} />
-                <span>AI Assistant</span>
-              </Button>
-              <span className="text-sm text-gray-600">
-                Welcome, <span className="font-medium text-gray-900">{user?.username}</span>!
-              </span>
-              <Button variant="outline" onClick={logout}>
-                Logout
-              </Button>
-            </div>
+                    <div className="flex items-center space-x-4">
+                      <Button
+                        variant="outline"
+                        onClick={() => window.location.href = '/dashboard'}
+                        className="flex items-center space-x-2"
+                      >
+                        <Home size={16} />
+                        <span>Home</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => window.location.href = '/profile'}
+                        className="flex items-center space-x-2"
+                      >
+                        <User size={16} />
+                        <span>Profile</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => window.location.href = '/chat'}
+                        className="flex items-center space-x-2"
+                      >
+                        <Sparkles size={16} />
+                        <span>AI Assistant</span>
+                      </Button>
+                      <span className="text-sm text-gray-600">
+                        Welcome, <span className="font-medium text-gray-900">{user?.username}</span>!
+                      </span>
+                      <Button variant="outline" onClick={logout}>
+                        Logout
+                      </Button>
+                    </div>
           </div>
         </div>
       </header>
