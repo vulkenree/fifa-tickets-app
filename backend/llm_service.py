@@ -2,7 +2,7 @@ import os
 import json
 from typing import List, Dict, Any, Optional
 from openai import OpenAI
-from models import db, Ticket, User, Match, ChatMessage
+from models import db, Ticket, User, Match, ChatMessage, SQLQueryLog
 from datetime import datetime, date
 import re
 
@@ -11,10 +11,10 @@ class LLMService:
         api_key = os.environ.get('OPENAI_API_KEY')
         if api_key:
             self.client = OpenAI(api_key=api_key)
-            self.model = "gpt-4"
+            self.model = "gpt-4o"
         else:
             self.client = None
-            self.model = "gpt-4"
+            self.model = "gpt-4o"
             print("⚠️  Warning: OPENAI_API_KEY not set. LLM service will return mock responses.")
         
         # System prompt with database schema documentation
@@ -26,6 +26,7 @@ DATABASE SCHEMA:
 - Matches: id, match_number, date, venue
 - ChatConversations: id, user_id, title, created_at, updated_at, is_saved
 - ChatMessages: id, conversation_id, role, content, created_at
+- SQLQueryLog: id, user_id, conversation_id, question, generated_sql, result_count, executed_at, error_message
 
 SECURITY RULES:
 1. NEVER access user.password_hash - this field is completely off-limits
@@ -40,6 +41,10 @@ AVAILABLE FUNCTIONS:
 - get_venue_info: Get information about venues and cities
 - get_user_tickets: Get tickets for a specific user
 - get_match_details: Get details about a specific match
+- get_friends_with_tickets_count: Get all users with tickets and their counts
+- get_matches_by_attendance: Get matches ranked by attendance (users or tickets)
+- recommend_matches_by_friends_and_venue: Recommend matches based on friends and venue
+- execute_sql_query: Execute natural language queries using text-to-SQL
 
 RESPONSE GUIDELINES:
 - Provide clear, helpful answers in English only
@@ -49,12 +54,31 @@ RESPONSE GUIDELINES:
 - Be conversational and friendly
 - If you can't find specific information, say so clearly
 
+ONE-SHOT EXAMPLES:
+Q: "How many friends have FIFA tickets?"
+A: Call get_friends_with_tickets_count(), return formatted list with counts
+
+Q: "Which match has the most attendees?"
+A: Call get_matches_by_attendance() with clarifying question about users vs tickets
+
+Q: "Recommend matches where John is going to New York venues"
+A: Call recommend_matches_by_friends_and_venue(usernames=['John'], venue='New York')
+
+Q: "Show me all tickets for match M50"
+A: Call get_tickets_by_filters(filters={'match_number': 'M50'})
+
+Q: "Which friends are going to the final match?"
+A: Use execute_sql_query to find the final match, then get friends attending
+
 EXAMPLE QUESTIONS YOU CAN HANDLE:
-- "Which match has the most of my friends going to?"
+- "How many of my friends are interested in FIFA 2026 and have tickets?"
+- "Which games have the most attendees?" (will ask for clarification)
+- "Recommend matches where John and Sarah are attending in New York"
+- "Show me matches with the most friends attending"
+- "Which match has the highest total tickets sold?"
 - "What's a good weekend where my friends have tickets and venues are close together?"
 - "Show me all matches in New York that my friends are attending"
 - "Which friends are going to Match M50?"
-- "Recommend matches where I can meet up with the most friends"
 - "What matches are happening on July 4th weekend?"
 - "Which cities have the most match activity?" """
 
@@ -178,7 +202,7 @@ EXAMPLE QUESTIONS YOU CAN HANDLE:
             print(f"Error in get_match_details: {e}")
             return None
 
-    def get_conversation_context(self, conversation_id: int, limit: int = 10) -> List[Dict]:
+    def get_conversation_context(self, conversation_id: int, limit: int = 20) -> List[Dict]:
         """Get recent conversation context for the LLM"""
         try:
             messages = ChatMessage.query.filter_by(conversation_id=conversation_id).order_by(
@@ -189,6 +213,222 @@ EXAMPLE QUESTIONS YOU CAN HANDLE:
             return [msg.to_dict() for msg in reversed(messages)]
         except Exception as e:
             print(f"Error in get_conversation_context: {e}")
+            return []
+
+    def execute_sql_query(self, user_id: int, question: str, conversation_id: int = None) -> Dict[str, Any]:
+        """Execute a natural language query using GPT-4o text-to-SQL"""
+        try:
+            if not self.client:
+                return {
+                    "sql": "SELECT 'Mock SQL' as query",
+                    "results": [{"message": "Mock response - OpenAI API key not set"}],
+                    "explanation": "This is a mock response for testing"
+                }
+
+            # Database schema for GPT-4o
+            schema_prompt = """
+DATABASE SCHEMA (PostgreSQL):
+- "user": id (INTEGER PRIMARY KEY), username (TEXT), created_at (TIMESTAMP)
+- ticket: id (INTEGER PRIMARY KEY), user_id (INTEGER), name (TEXT), match_number (TEXT), 
+  date (DATE), venue (TEXT), ticket_category (TEXT), quantity (INTEGER), 
+  ticket_info (TEXT), ticket_price (REAL), created_at (TIMESTAMP), updated_at (TIMESTAMP)
+- match: id (INTEGER PRIMARY KEY), match_number (TEXT), date (DATE), venue (TEXT)
+- chat_conversation: id (INTEGER PRIMARY KEY), user_id (INTEGER), title (TEXT), 
+  created_at (TIMESTAMP), updated_at (TIMESTAMP), is_saved (BOOLEAN)
+- chat_message: id (INTEGER PRIMARY KEY), conversation_id (INTEGER), role (TEXT), 
+  content (TEXT), created_at (TIMESTAMP)
+- sql_query_log: id (INTEGER PRIMARY KEY), user_id (INTEGER), conversation_id (INTEGER), 
+  question (TEXT), generated_sql (TEXT), result_count (INTEGER), executed_at (TIMESTAMP), 
+  error_message (TEXT)
+
+SAFETY RULES:
+1. ONLY generate SELECT queries - NO INSERT, UPDATE, DELETE, DROP, ALTER
+2. Use proper JOINs to connect related tables
+3. Always use parameterized queries or safe string formatting
+4. Return results in a readable format
+5. Use double quotes around table names: "user", "match", etc.
+
+Generate a safe SQL query for this question: {question}
+Return ONLY the SQL query, no explanations.
+"""
+
+            # Get SQL from GPT-4o
+            response = self.client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": schema_prompt.format(question=question)},
+                    {"role": "user", "content": question}
+                ],
+                temperature=0.1,
+                max_tokens=500
+            )
+            
+            sql_query = response.choices[0].message.content.strip()
+            
+            # Validate SQL safety
+            sql_upper = sql_query.upper()
+            dangerous_keywords = ['INSERT', 'UPDATE', 'DELETE', 'DROP', 'ALTER', 'CREATE', 'TRUNCATE']
+            if any(keyword in sql_upper for keyword in dangerous_keywords):
+                raise ValueError(f"Unsafe SQL query detected: {sql_query}")
+            
+            # Execute query
+            from sqlalchemy import text
+            result = db.session.execute(text(sql_query))
+            results = [dict(row._mapping) for row in result]
+            
+            # Log the query
+            self.log_sql_review(user_id, conversation_id, question, sql_query, len(results))
+            
+            return {
+                "sql": sql_query,
+                "results": results,
+                "explanation": f"Query returned {len(results)} results"
+            }
+            
+        except Exception as e:
+            error_msg = str(e)
+            # Log the error
+            if 'sql_query' in locals():
+                self.log_sql_review(user_id, conversation_id, question, sql_query, 0, error_msg)
+            
+            return {
+                "sql": sql_query if 'sql_query' in locals() else "Error generating SQL",
+                "results": [],
+                "explanation": f"Error: {error_msg}"
+            }
+
+    def log_sql_review(self, user_id: int, conversation_id: int, question: str, 
+                      sql: str, result_count: int, error_message: str = None):
+        """Log SQL query for review"""
+        try:
+            log_entry = SQLQueryLog(
+                user_id=user_id,
+                conversation_id=conversation_id,
+                question=question,
+                generated_sql=sql,
+                result_count=result_count,
+                error_message=error_message
+            )
+            db.session.add(log_entry)
+            db.session.commit()
+        except Exception as e:
+            print(f"Error logging SQL query: {e}")
+
+    def get_friends_with_tickets_count(self, user_id: int) -> List[Dict]:
+        """Get distinct users who have tickets with their ticket counts"""
+        try:
+            query = """
+            SELECT DISTINCT u.username, u.id, COUNT(t.id) as ticket_count 
+            FROM "user" u 
+            JOIN ticket t ON u.id = t.user_id 
+            GROUP BY u.id, u.username
+            ORDER BY ticket_count DESC
+            """
+            
+            from sqlalchemy import text
+            result = db.session.execute(text(query))
+            friends = []
+            for row in result:
+                friends.append({
+                    'username': row.username,
+                    'user_id': row.id,
+                    'ticket_count': row.ticket_count
+                })
+            
+            return friends
+        except Exception as e:
+            print(f"Error in get_friends_with_tickets_count: {e}")
+            return []
+
+    def get_matches_by_attendance(self, user_id: int, ranking_type: str = "users") -> List[Dict]:
+        """Get matches ranked by attendance (users or tickets)"""
+        try:
+            if ranking_type == "users":
+                # Count distinct users per match
+                query = """
+                SELECT t.match_number, t.venue, t.date, COUNT(DISTINCT t.user_id) as user_count
+                FROM ticket t
+                GROUP BY t.match_number, t.venue, t.date
+                ORDER BY user_count DESC
+                """
+            else:
+                # Sum total tickets per match
+                query = """
+                SELECT t.match_number, t.venue, t.date, SUM(t.quantity) as total_tickets
+                FROM ticket t
+                GROUP BY t.match_number, t.venue, t.date
+                ORDER BY total_tickets DESC
+                """
+            
+            from sqlalchemy import text
+            result = db.session.execute(text(query))
+            matches = []
+            for row in result:
+                matches.append({
+                    'match_number': row.match_number,
+                    'venue': row.venue,
+                    'date': row.date.strftime('%Y-%m-%d') if row.date else None,
+                    'user_count' if ranking_type == "users" else 'total_tickets': 
+                        row.user_count if ranking_type == "users" else row.total_tickets
+                })
+            
+            return matches
+        except Exception as e:
+            print(f"Error in get_matches_by_attendance: {e}")
+            return []
+
+    def recommend_matches_by_friends_and_venue(self, user_id: int, preferred_usernames: List[str] = None, 
+                                             preferred_venue: str = None) -> List[Dict]:
+        """Recommend matches based on friends attending and venue preference"""
+        try:
+            # Build the query based on parameters
+            where_conditions = []
+            params = {}
+            
+            if preferred_usernames:
+                # Find user IDs for the usernames
+                username_placeholders = ','.join([f':username_{i}' for i in range(len(preferred_usernames))])
+                where_conditions.append(f"t.user_id IN (SELECT id FROM \"user\" WHERE username IN ({username_placeholders}))")
+                for i, username in enumerate(preferred_usernames):
+                    params[f'username_{i}'] = username
+            
+            if preferred_venue:
+                where_conditions.append("t.venue ILIKE :venue")
+                params['venue'] = f"%{preferred_venue}%"
+            
+            where_clause = "WHERE " + " AND ".join(where_conditions) if where_conditions else ""
+            
+            query = f"""
+            SELECT 
+                t.match_number, 
+                t.venue, 
+                t.date,
+                COUNT(DISTINCT t.user_id) as friend_count,
+                SUM(t.quantity) as total_tickets,
+                STRING_AGG(DISTINCT u.username, ',') as attending_friends
+            FROM ticket t
+            JOIN "user" u ON t.user_id = u.id
+            {where_clause}
+            GROUP BY t.match_number, t.venue, t.date
+            ORDER BY friend_count DESC, total_tickets DESC
+            """
+            
+            from sqlalchemy import text
+            result = db.session.execute(text(query), params)
+            matches = []
+            for row in result:
+                matches.append({
+                    'match_number': row.match_number,
+                    'venue': row.venue,
+                    'date': row.date.strftime('%Y-%m-%d') if row.date else None,
+                    'friend_count': row.friend_count,
+                    'total_tickets': row.total_tickets,
+                    'attending_friends': row.attending_friends.split(',') if row.attending_friends else []
+                })
+            
+            return matches
+        except Exception as e:
+            print(f"Error in recommend_matches_by_friends_and_venue: {e}")
             return []
 
     def process_message(self, user_id: int, message: str, conversation_id: int = None) -> Dict[str, Any]:
@@ -283,6 +523,49 @@ EXAMPLE QUESTIONS YOU CAN HANDLE:
                         },
                         "required": ["match_number"]
                     }
+                },
+                {
+                    "name": "get_friends_with_tickets_count",
+                    "description": "Get all users who have tickets with their ticket counts",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {},
+                        "required": []
+                    }
+                },
+                {
+                    "name": "get_matches_by_attendance",
+                    "description": "Get matches ranked by attendance - either by number of users or total tickets",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "ranking_type": {"type": "string", "enum": ["users", "tickets"], "description": "Rank by number of unique users or total ticket quantity"}
+                        },
+                        "required": ["ranking_type"]
+                    }
+                },
+                {
+                    "name": "recommend_matches_by_friends_and_venue",
+                    "description": "Recommend matches based on friends attending and venue preference",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "preferred_usernames": {"type": "array", "items": {"type": "string"}, "description": "List of usernames to find matches for"},
+                            "preferred_venue": {"type": "string", "description": "Preferred venue name (optional)"}
+                        },
+                        "required": []
+                    }
+                },
+                {
+                    "name": "execute_sql_query",
+                    "description": "Execute a natural language query using text-to-SQL",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "question": {"type": "string", "description": "Natural language question to convert to SQL"}
+                        },
+                        "required": ["question"]
+                    }
                 }
             ]
 
@@ -329,6 +612,18 @@ EXAMPLE QUESTIONS YOU CAN HANDLE:
                     result = self.get_user_tickets(user_id)
                 elif function_name == "get_match_details":
                     result = self.get_match_details(function_args['match_number'])
+                elif function_name == "get_friends_with_tickets_count":
+                    result = self.get_friends_with_tickets_count(user_id)
+                elif function_name == "get_matches_by_attendance":
+                    result = self.get_matches_by_attendance(user_id, function_args.get('ranking_type', 'users'))
+                elif function_name == "recommend_matches_by_friends_and_venue":
+                    result = self.recommend_matches_by_friends_and_venue(
+                        user_id, 
+                        function_args.get('preferred_usernames'),
+                        function_args.get('preferred_venue')
+                    )
+                elif function_name == "execute_sql_query":
+                    result = self.execute_sql_query(user_id, function_args['question'], conversation_id)
                 else:
                     result = {"error": f"Unknown function: {function_name}"}
 
