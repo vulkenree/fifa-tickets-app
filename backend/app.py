@@ -1,7 +1,8 @@
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash
 from flask_cors import CORS
+from flask_session import Session
 from models import db, User, Ticket, Match, ChatConversation, ChatMessage
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import re
 import os
 import secrets
@@ -21,6 +22,8 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', secrets.token_hex(32))
 app.config['SESSION_COOKIE_SAMESITE'] = 'None' if os.environ.get('FLASK_ENV') == 'production' else 'Lax'
 app.config['SESSION_COOKIE_SECURE'] = True if os.environ.get('FLASK_ENV') == 'production' else False
 app.config['SESSION_COOKIE_HTTPONLY'] = True
+# Set permanent session lifetime (31 days default, but explicit is better)
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=31)
 
 # Smart database configuration
 database_url = os.environ.get('DATABASE_URL')
@@ -56,6 +59,18 @@ else:
 # Initialize database
 db.init_app(app)
 
+# Configure persistent session storage using database backend
+# This solves the in-memory session issue where sessions are lost on server restart
+app.config['SESSION_TYPE'] = 'sqlalchemy'
+app.config['SESSION_SQLALCHEMY'] = db
+app.config['SESSION_SQLALCHEMY_TABLE'] = 'sessions'
+app.config['SESSION_PERMANENT'] = True
+app.config['SESSION_USE_SIGNER'] = True
+app.config['SESSION_KEY_PREFIX'] = 'fifa_tickets:session:'
+
+# Initialize Flask-Session
+Session(app)
+
 # Initialize LLM service
 llm_service = LLMService()
 
@@ -75,6 +90,14 @@ def login_required(f):
     """Decorator to require login for protected routes"""
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
+            # Debug logging in production
+            if os.environ.get('FLASK_ENV') == 'production':
+                print(f"❌ Authentication failed for {request.path}")
+                print(f"   Session keys: {list(session.keys())}")
+                print(f"   User ID in session: {session.get('user_id', 'NOT FOUND')}")
+                print(f"   Request origin: {request.headers.get('Origin', 'N/A')}")
+                print(f"   Cookies received: {list(request.cookies.keys())}")
+            
             # Check if this is an API route
             if request.path.startswith('/api/'):
                 return jsonify({'error': 'Authentication required'}), 401
@@ -170,11 +193,22 @@ def api_login():
     if user and user.check_password(password):
         session['user_id'] = user.id
         session['username'] = user.username
+        session.permanent = True  # Make session persistent across browser restarts
+        
+        # Debug logging in production
+        if os.environ.get('FLASK_ENV') == 'production':
+            print(f"✅ Login successful for user {username} (ID: {user.id})")
+            print(f"   Session ID: {session.get('_id', 'N/A')}")
+            print(f"   Session permanent: {session.permanent}")
+            print(f"   User ID in session: {session.get('user_id')}")
+        
         return jsonify({
             'id': user.id,
             'username': user.username
         })
     else:
+        if os.environ.get('FLASK_ENV') == 'production':
+            print(f"❌ Login failed for username: {username}")
         return jsonify({'error': 'Invalid credentials'}), 401
 
 @app.route('/api/auth/logout', methods=['POST'])
@@ -220,6 +254,22 @@ def get_current_user():
         'id': user.id,
         'username': user.username
     })
+
+@app.route('/api/debug/session', methods=['GET'])
+def debug_session():
+    """Debug endpoint to check session state (for troubleshooting)"""
+    session_info = {
+        'has_session': bool(session),
+        'session_keys': list(session.keys()),
+        'user_id': session.get('user_id'),
+        'username': session.get('username'),
+        'permanent': session.get('_permanent', False),
+        'cookies_received': list(request.cookies.keys()),
+        'request_origin': request.headers.get('Origin'),
+        'request_referer': request.headers.get('Referer'),
+        'flask_env': os.environ.get('FLASK_ENV'),
+    }
+    return jsonify(session_info)
 
 @app.route('/dashboard')
 @login_required
