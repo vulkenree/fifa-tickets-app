@@ -779,6 +779,13 @@ def unsave_chat_conversation(conversation_id):
 def get_profile():
     """Get current user profile"""
     try:
+        # Additional debug logging for production
+        if os.environ.get('FLASK_ENV') == 'production':
+            print(f"🔍 Profile request - Session keys: {list(session.keys())}")
+            print(f"   User ID in session: {session.get('user_id', 'NOT FOUND')}")
+            print(f"   Cookies received: {list(request.cookies.keys())}")
+            print(f"   Request origin: {request.headers.get('Origin', 'N/A')}")
+        
         user = User.query.get(session['user_id'])
         if not user:
             return jsonify({'error': 'User not found'}), 404
@@ -791,6 +798,9 @@ def get_profile():
         })
     except Exception as e:
         print(f"Error in get_profile: {e}")
+        if os.environ.get('FLASK_ENV') == 'production':
+            import traceback
+            print(f"   Traceback: {traceback.format_exc()}")
         return jsonify({'error': 'Failed to get profile'}), 500
 
 @app.route('/api/profile', methods=['PUT'])
