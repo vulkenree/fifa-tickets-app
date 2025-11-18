@@ -1,8 +1,7 @@
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash
+from flask import Flask, render_template, request, jsonify, redirect, url_for, flash
 from flask_cors import CORS
-from flask_session import Session
 from models import db, User, Ticket, Match, ChatConversation, ChatMessage
-from datetime import datetime, date, timedelta
+from datetime import datetime, date
 import re
 import os
 import secrets
@@ -10,6 +9,7 @@ import csv
 import sys
 import logging
 from llm_service import LLMService
+from jwt_utils import generate_token, get_user_from_token
 
 # Configure logging to ensure all messages are captured in Railway
 logging.basicConfig(
@@ -29,11 +29,6 @@ app = Flask(__name__)
 # Production configuration
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', secrets.token_hex(32))
 
-# Session config for Next.js frontend
-# Note: Cookie settings are set again before Flask-Session initialization to ensure they're applied
-# Set permanent session lifetime (31 days default, but explicit is better)
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=31)
-
 # Smart database configuration
 database_url = os.environ.get('DATABASE_URL')
 if database_url:
@@ -41,11 +36,11 @@ if database_url:
     if database_url.startswith('postgres://'):
         database_url = database_url.replace('postgres://', 'postgresql://', 1)
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
-    print(f"✅ Using PostgreSQL database")
+    logger.info("Using PostgreSQL database")
 else:
     # Default to SQLite for local development
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///instance/fifa_tickets.db'
-    print(f"✅ Using SQLite database (local development)")
+    logger.info("Using SQLite database (local development)")
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -56,111 +51,8 @@ def after_request(response):
     response.headers['X-Frame-Options'] = 'DENY'
     response.headers['X-XSS-Protection'] = '1; mode=block'
     
-    # Always log in production to debug cookie issues
-    flask_env = os.environ.get('FLASK_ENV', 'not_set')
-    is_production = flask_env == 'production'
-    
-    if is_production:
+    if os.environ.get('FLASK_ENV') == 'production':
         response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
-        
-        # Ensure session cookie has correct attributes for cross-origin requests
-        # Flask-Session might not always respect config, so we enforce it here
-        # Handle both single string and list of Set-Cookie headers
-        set_cookie_headers = response.headers.getlist('Set-Cookie')
-        
-        # Debug: Always log if we're in production and there are cookies
-        if set_cookie_headers:
-            logger.info(f"🔍 after_request hook triggered (FLASK_ENV={flask_env})")
-            logger.info(f"   Found {len(set_cookie_headers)} Set-Cookie header(s)")
-            logger.info(f"   Request path: {request.path}")
-            logger.info(f"   Request method: {request.method}")
-            sys.stdout.flush()  # Force flush to ensure Railway captures it
-        
-        if set_cookie_headers:
-            updated_cookies = []
-            for cookie in set_cookie_headers:
-                # Check if it's a session cookie (check for session= at start of cookie value)
-                is_session_cookie = cookie.startswith('session=') or 'session=' in cookie.split(';')[0]
-                
-                logger.info(f"   Cookie check: starts_with_session={cookie.startswith('session=')}, contains_session={'session=' in cookie.split(';')[0]}")
-                logger.info(f"   Cookie preview: {cookie[:80]}...")
-                sys.stdout.flush()
-                
-                if is_session_cookie:
-                    original_cookie = cookie
-                    cookie_modified = False
-                    
-                    # Always log in production
-                    logger.info(f"🔍 Processing session cookie in after_request:")
-                    logger.info(f"   Original: {cookie[:200]}")
-                    logger.info(f"   Has Secure: {'Secure' in cookie}")
-                    logger.info(f"   Has SameSite: {'SameSite' in cookie}")
-                    logger.info(f"   Cookie length: {len(cookie)}")
-                    sys.stdout.flush()
-                    
-                    # Ensure Secure and SameSite=None are present
-                    if 'Secure' not in cookie:
-                        # Add Secure flag (before any existing attributes)
-                        # Insert before HttpOnly or at the end
-                        if '; HttpOnly' in cookie:
-                            cookie = cookie.replace('; HttpOnly', '; Secure; HttpOnly')
-                        elif '; Path=' in cookie:
-                            # Insert before Path
-                            cookie = cookie.replace('; Path=', '; Secure; Path=')
-                        else:
-                            # Add at the end
-                            cookie = cookie + '; Secure'
-                        cookie_modified = True
-                    
-                    # Ensure SameSite=None is present (required for cross-origin with Secure)
-                    if 'SameSite=None' not in cookie:
-                        if 'SameSite=Lax' in cookie:
-                            cookie = cookie.replace('SameSite=Lax', 'SameSite=None')
-                            cookie_modified = True
-                        elif 'SameSite=Strict' in cookie:
-                            cookie = cookie.replace('SameSite=Strict', 'SameSite=None')
-                            cookie_modified = True
-                        elif 'SameSite=' in cookie:
-                            # Has SameSite but not None - replace it
-                            import re
-                            cookie = re.sub(r'SameSite=[^;]+', 'SameSite=None', cookie)
-                            cookie_modified = True
-                        else:
-                            # No SameSite at all - add it
-                            # Insert before Path or at the end
-                            if '; Path=' in cookie:
-                                cookie = cookie.replace('; Path=', '; SameSite=None; Path=')
-                            elif '; HttpOnly' in cookie:
-                                cookie = cookie.replace('; HttpOnly', '; SameSite=None; HttpOnly')
-                            else:
-                                cookie = cookie + '; SameSite=None'
-                            cookie_modified = True
-                    
-                    # Always log cookie modification in production
-                    if cookie_modified:
-                        logger.info(f"🍪 Cookie attributes MODIFIED:")
-                        logger.info(f"   Updated:  {cookie[:200]}")
-                        logger.info(f"   Has Secure: {'Secure' in cookie}")
-                        logger.info(f"   Has SameSite=None: {'SameSite=None' in cookie}")
-                        logger.info(f"   Has HttpOnly: {'HttpOnly' in cookie}")
-                    else:
-                        logger.info(f"✅ Cookie already has correct attributes")
-                else:
-                    logger.warning(f"⚠️  Cookie is NOT a session cookie, skipping modification")
-                sys.stdout.flush()
-                    
-                updated_cookies.append(cookie)
-            
-            # Replace all Set-Cookie headers
-            logger.info(f"🔄 Replacing {len(response.headers.getlist('Set-Cookie'))} Set-Cookie header(s) with {len(updated_cookies)} updated cookie(s)")
-            response.headers.poplist('Set-Cookie')
-            for cookie in updated_cookies:
-                response.headers.add('Set-Cookie', cookie)
-                logger.info(f"   Added cookie: {cookie[:100]}...")
-            sys.stdout.flush()
-        else:
-            logger.warning(f"⚠️  No Set-Cookie headers found in response")
-            sys.stdout.flush()
     
     return response
 
@@ -173,37 +65,6 @@ else:
 # Initialize database
 db.init_app(app)
 
-# Configure persistent session storage using database backend
-# This solves the in-memory session issue where sessions are lost on server restart
-app.config['SESSION_TYPE'] = 'sqlalchemy'
-app.config['SESSION_SQLALCHEMY'] = db
-app.config['SESSION_SQLALCHEMY_TABLE'] = 'sessions'
-app.config['SESSION_PERMANENT'] = True
-app.config['SESSION_USE_SIGNER'] = True
-app.config['SESSION_KEY_PREFIX'] = 'fifa_tickets:session:'
-
-# Flask-Session cookie configuration (must be set before Session initialization)
-# These settings ensure cookies work with cross-origin requests in production
-if os.environ.get('FLASK_ENV') == 'production':
-    app.config['SESSION_COOKIE_SECURE'] = True  # Required for HTTPS
-    app.config['SESSION_COOKIE_SAMESITE'] = 'None'  # Required for cross-origin
-    app.config['SESSION_COOKIE_HTTPONLY'] = True
-    app.config['SESSION_COOKIE_DOMAIN'] = None  # Let browser set domain automatically
-
-# Initialize Flask-Session
-try:
-    session_obj = Session(app)
-    if os.environ.get('FLASK_ENV') == 'production':
-        logger.info("✅ Flask-Session initialized with SQLAlchemy backend")
-        logger.info(f"   Cookie Secure: {app.config.get('SESSION_COOKIE_SECURE')}")
-        logger.info(f"   Cookie SameSite: {app.config.get('SESSION_COOKIE_SAMESITE')}")
-        logger.info(f"   Cookie HttpOnly: {app.config.get('SESSION_COOKIE_HTTPONLY')}")
-        sys.stdout.flush()
-except Exception as e:
-    print(f"❌ ERROR: Flask-Session initialization failed: {e}")
-    print("   Sessions will fall back to in-memory storage (not recommended for production)")
-    raise
-
 # Initialize LLM service
 llm_service = LLMService()
 
@@ -214,36 +75,30 @@ CORS(app,
          'https://fifa-tickets-frontendapp-production.up.railway.app',  # Production
          os.environ.get('FRONTEND_URL', '')  # Custom domain if set
      ],
-     supports_credentials=True,  # Allow cookies
      allow_headers=['Content-Type', 'Authorization'],
      methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
 )
 
 def login_required(f):
-    """Decorator to require login for protected routes"""
+    """Decorator to require JWT authentication for protected routes"""
     def decorated_function(*args, **kwargs):
-        if 'user_id' not in session:
-            # Debug logging in production
-            if os.environ.get('FLASK_ENV') == 'production':
-                print(f"❌ Authentication failed for {request.path}")
-                print(f"   Session keys: {list(session.keys())}")
-                print(f"   User ID in session: {session.get('user_id', 'NOT FOUND')}")
-                print(f"   Request origin: {request.headers.get('Origin', 'N/A')}")
-                print(f"   Cookies received: {list(request.cookies.keys())}")
-            
+        user_data = get_user_from_token()
+        
+        if not user_data:
             # Check if this is an API route
             if request.path.startswith('/api/'):
                 return jsonify({'error': 'Authentication required'}), 401
             else:
                 return redirect(url_for('login'))
+        
+        # Add user_id to kwargs so endpoints can access it
+        kwargs['user_id'] = user_data['user_id']
         return f(*args, **kwargs)
     decorated_function.__name__ = f.__name__
     return decorated_function
 
 @app.route('/')
 def index():
-    if 'user_id' in session:
-        return redirect(url_for('dashboard'))
     return redirect(url_for('login'))
 
 @app.route('/ping')
@@ -257,63 +112,25 @@ def ping():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
-        
-        if not username or not password:
-            flash('Please fill in all fields', 'error')
-            return render_template('login.html')
-        
-        user = User.query.filter_by(username=username).first()
-        
-        if user and user.check_password(password):
-            session['user_id'] = user.id
-            session['username'] = user.username
-            return redirect(url_for('dashboard'))
-        else:
-            flash('Invalid username or password', 'error')
-    
-    return render_template('login.html')
+    # This route is for server-side rendering (if needed)
+    # API login is handled by /api/auth/login
+    return redirect(url_for('index'))
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-    if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
-        confirm_password = request.form.get('confirm_password')
-        
-        if not username or not password or not confirm_password:
-            flash('Please fill in all fields', 'error')
-            return render_template('login.html', show_register=True)
-        
-        if password != confirm_password:
-            flash('Passwords do not match', 'error')
-            return render_template('login.html', show_register=True)
-        
-        if User.query.filter_by(username=username).first():
-            flash('Username already exists', 'error')
-            return render_template('login.html', show_register=True)
-        
-        user = User(username=username)
-        user.set_password(password)
-        db.session.add(user)
-        db.session.commit()
-        
-        flash('Registration successful! Please login.', 'success')
-        return redirect(url_for('login'))
-    
-    return render_template('login.html', show_register=True)
+    # This route is for server-side rendering (if needed)
+    # API registration is handled by /api/auth/register
+    return redirect(url_for('index'))
 
 @app.route('/logout')
 def logout():
-    session.clear()
+    # JWT is stateless, so logout is handled client-side
     return redirect(url_for('login'))
 
 # API Auth endpoints for Next.js frontend
 @app.route('/api/auth/login', methods=['POST'])
 def api_login():
-    """API login endpoint for Next.js"""
+    """API login endpoint for Next.js - returns JWT token"""
     data = request.get_json()
     username = data.get('username')
     password = data.get('password')
@@ -324,37 +141,30 @@ def api_login():
     user = User.query.filter_by(username=username).first()
     
     if user and user.check_password(password):
-        session['user_id'] = user.id
-        session['username'] = user.username
-        session.permanent = True  # Make session persistent across browser restarts
+        # Generate JWT token
+        token = generate_token(user.id, user.username)
         
-        # Debug logging in production
-        if os.environ.get('FLASK_ENV') == 'production':
-            logger.info(f"✅ Login successful for user {username} (ID: {user.id})")
-            logger.info(f"   Session ID: {session.get('_id', 'N/A')}")
-            logger.info(f"   Session permanent: {session.permanent}")
-            logger.info(f"   User ID in session: {session.get('user_id')}")
-            sys.stdout.flush()
+        logger.info(f"✅ Login successful for user {username} (ID: {user.id})")
         
         return jsonify({
-            'id': user.id,
-            'username': user.username
+            'token': token,
+            'user': {
+                'id': user.id,
+                'username': user.username
+            }
         })
     else:
-        if os.environ.get('FLASK_ENV') == 'production':
-            print(f"❌ Login failed for username: {username}")
+        logger.warning(f"❌ Login failed for username: {username}")
         return jsonify({'error': 'Invalid credentials'}), 401
 
 @app.route('/api/auth/logout', methods=['POST'])
-@login_required
 def api_logout():
-    """API logout endpoint"""
-    session.clear()
+    """API logout endpoint - JWT is stateless, so logout is handled client-side"""
     return jsonify({'message': 'Logged out successfully'})
 
 @app.route('/api/auth/register', methods=['POST'])
 def api_register():
-    """API registration endpoint"""
+    """API registration endpoint - returns JWT token"""
     data = request.get_json()
     username = data.get('username')
     password = data.get('password')
@@ -370,20 +180,24 @@ def api_register():
     db.session.add(user)
     db.session.commit()
     
-    # Log the user in after registration
-    session['user_id'] = user.id
-    session.permanent = True
+    # Generate JWT token
+    token = generate_token(user.id, user.username)
     
     return jsonify({
-        'id': user.id,
-        'username': user.username
+        'token': token,
+        'user': {
+            'id': user.id,
+            'username': user.username
+        }
     }), 201
 
 @app.route('/api/auth/me', methods=['GET'])
 @login_required
-def get_current_user():
+def get_current_user(user_id):
     """Get current authenticated user"""
-    user = User.query.get(session['user_id'])
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
     return jsonify({
         'id': user.id,
         'username': user.username
@@ -391,24 +205,21 @@ def get_current_user():
 
 @app.route('/api/debug/session', methods=['GET'])
 def debug_session():
-    """Debug endpoint to check session state (for troubleshooting)"""
-    session_info = {
-        'has_session': bool(session),
-        'session_keys': list(session.keys()),
-        'user_id': session.get('user_id'),
-        'username': session.get('username'),
-        'permanent': session.get('_permanent', False),
-        'cookies_received': list(request.cookies.keys()),
+    """Debug endpoint to check JWT authentication state"""
+    user_data = get_user_from_token()
+    debug_info = {
+        'authenticated': user_data is not None,
+        'user_data': user_data,
+        'auth_header': request.headers.get('Authorization'),
         'request_origin': request.headers.get('Origin'),
-        'request_referer': request.headers.get('Referer'),
         'flask_env': os.environ.get('FLASK_ENV'),
     }
-    return jsonify(session_info)
+    return jsonify(debug_info)
 
 @app.route('/dashboard')
-@login_required
 def dashboard():
-    return render_template('dashboard.html')
+    # Dashboard is handled by Next.js frontend
+    return redirect(url_for('index'))
 
 
 @app.route('/health')
@@ -471,7 +282,7 @@ def get_tickets():
 
 @app.route('/api/tickets', methods=['POST'])
 @login_required
-def create_ticket():
+def create_ticket(user_id):
     """Create a new ticket"""
     data = request.get_json()
     
@@ -519,7 +330,7 @@ def create_ticket():
     
     # Create ticket
     ticket = Ticket(
-        user_id=session['user_id'],
+        user_id=user_id,
         name=data['name'],
         match_number=data['match_number'],
         date=date_obj,
@@ -537,9 +348,9 @@ def create_ticket():
 
 @app.route('/api/tickets/<int:ticket_id>', methods=['PUT'])
 @login_required
-def update_ticket(ticket_id):
+def update_ticket(ticket_id, user_id):
     """Update an existing ticket"""
-    ticket = Ticket.query.filter_by(id=ticket_id, user_id=session['user_id']).first()
+    ticket = Ticket.query.filter_by(id=ticket_id, user_id=user_id).first()
     
     if not ticket:
         return jsonify({'error': 'Ticket not found'}), 404
@@ -604,9 +415,9 @@ def update_ticket(ticket_id):
 
 @app.route('/api/tickets/<int:ticket_id>', methods=['DELETE'])
 @login_required
-def delete_ticket(ticket_id):
+def delete_ticket(ticket_id, user_id):
     """Delete a ticket"""
-    ticket = Ticket.query.filter_by(id=ticket_id, user_id=session['user_id']).first()
+    ticket = Ticket.query.filter_by(id=ticket_id, user_id=user_id).first()
     
     if not ticket:
         return jsonify({'error': 'Ticket not found'}), 404
@@ -621,12 +432,12 @@ def init_match_data():
     csv_path = os.path.join(os.path.dirname(__file__), 'data', 'fifa_match_schedule.csv')
     
     # Force reload all match data to fix timezone issues
-    print("🔄 Force reloading all match data to fix timezone issues...")
+    logger.info("Force reloading all match data to fix timezone issues...")
     
     # Delete all existing matches
     Match.query.delete()
     db.session.commit()
-    print("🗑️  Deleted all existing match records")
+    logger.info("Deleted all existing match records")
     
     if True:  # Always reload from CSV
         # Load data from CSV if no matches exist
@@ -647,11 +458,11 @@ def init_match_data():
                     db.session.add(match)
                     match_count += 1
                 db.session.commit()
-                print(f"✅ Loaded {match_count} FIFA 2026 matches from CSV with timezone-safe parsing")
+                logger.info(f"Loaded {match_count} FIFA 2026 matches from CSV with timezone-safe parsing")
         except FileNotFoundError:
-            print(f"⚠️  Warning: Match schedule CSV not found at {csv_path}")
+            logger.warning(f"Match schedule CSV not found at {csv_path}")
         except Exception as e:
-            print(f"❌ Error loading match data: {e}")
+            logger.error(f"Error loading match data: {e}")
 
 @app.route('/api/matches', methods=['GET'])
 def get_matches():
@@ -687,7 +498,7 @@ def get_match_details(match_number):
 # Chat API endpoints
 @app.route('/api/chat/message', methods=['POST'])
 @login_required
-def send_chat_message():
+def send_chat_message(user_id):
     """Send a message to the AI assistant"""
     data = request.get_json()
     message = data.get('message', '').strip()
@@ -701,14 +512,14 @@ def send_chat_message():
         if conversation_id:
             conversation = ChatConversation.query.filter_by(
                 id=conversation_id, 
-                user_id=session['user_id']
+                user_id=user_id
             ).first()
             if not conversation:
                 return jsonify({'error': 'Conversation not found'}), 404
         else:
             # Create new conversation
             conversation = ChatConversation(
-                user_id=session['user_id'],
+                user_id=user_id,
                 title=f"Chat {datetime.now().strftime('%Y-%m-%d %H:%M')}"
             )
             db.session.add(conversation)
@@ -724,7 +535,7 @@ def send_chat_message():
         
         # Get AI response
         response = llm_service.process_message(
-            user_id=session['user_id'],
+            user_id=user_id,
             message=message,
             conversation_id=conversation.id
         )
@@ -752,31 +563,31 @@ def send_chat_message():
         
     except Exception as e:
         db.session.rollback()
-        print(f"Error in send_chat_message: {e}")
+        logger.error(f"Error in send_chat_message: {e}")
         return jsonify({'error': 'Failed to process message'}), 500
 
 @app.route('/api/chat/conversations', methods=['GET'])
 @login_required
-def get_chat_conversations():
+def get_chat_conversations(user_id):
     """Get all conversations for the current user"""
     try:
         conversations = ChatConversation.query.filter_by(
-            user_id=session['user_id']
+            user_id=user_id
         ).order_by(ChatConversation.updated_at.desc()).all()
         
         return jsonify([conv.to_dict() for conv in conversations])
     except Exception as e:
-        print(f"Error in get_chat_conversations: {e}")
+        logger.error(f"Error in get_chat_conversations: {e}")
         return jsonify({'error': 'Failed to get conversations'}), 500
 
 @app.route('/api/chat/conversations/<int:conversation_id>', methods=['GET'])
 @login_required
-def get_chat_conversation(conversation_id):
+def get_chat_conversation(conversation_id, user_id):
     """Get a specific conversation with its messages"""
     try:
         conversation = ChatConversation.query.filter_by(
             id=conversation_id,
-            user_id=session['user_id']
+            user_id=user_id
         ).first()
         
         if not conversation:
@@ -791,17 +602,17 @@ def get_chat_conversation(conversation_id):
             'messages': [msg.to_dict() for msg in messages]
         })
     except Exception as e:
-        print(f"Error in get_chat_conversation: {e}")
+        logger.error(f"Error in get_chat_conversation: {e}")
         return jsonify({'error': 'Failed to get conversation'}), 500
 
 @app.route('/api/chat/conversations/<int:conversation_id>', methods=['DELETE'])
 @login_required
-def delete_chat_conversation(conversation_id):
+def delete_chat_conversation(conversation_id, user_id):
     """Delete a conversation"""
     try:
         conversation = ChatConversation.query.filter_by(
             id=conversation_id,
-            user_id=session['user_id']
+            user_id=user_id
         ).first()
         
         if not conversation:
@@ -813,17 +624,17 @@ def delete_chat_conversation(conversation_id):
         return jsonify({'message': 'Conversation deleted successfully'})
     except Exception as e:
         db.session.rollback()
-        print(f"Error in delete_chat_conversation: {e}")
+        logger.error(f"Error in delete_chat_conversation: {e}")
         return jsonify({'error': 'Failed to delete conversation'}), 500
 
 @app.route('/api/chat/conversations/<int:conversation_id>/save', methods=['POST'])
 @login_required
-def save_chat_conversation(conversation_id):
+def save_chat_conversation(conversation_id, user_id):
     """Mark a conversation as saved"""
     try:
         conversation = ChatConversation.query.filter_by(
             id=conversation_id,
-            user_id=session['user_id']
+            user_id=user_id
         ).first()
         
         if not conversation:
@@ -835,17 +646,17 @@ def save_chat_conversation(conversation_id):
         return jsonify({'message': 'Conversation saved successfully'})
     except Exception as e:
         db.session.rollback()
-        print(f"Error in save_chat_conversation: {e}")
+        logger.error(f"Error in save_chat_conversation: {e}")
         return jsonify({'error': 'Failed to save conversation'}), 500
 
 @app.route('/api/chat/conversations/<int:conversation_id>/unsave', methods=['POST'])
 @login_required
-def unsave_chat_conversation(conversation_id):
+def unsave_chat_conversation(conversation_id, user_id):
     """Mark a conversation as not saved"""
     try:
         conversation = ChatConversation.query.filter_by(
             id=conversation_id,
-            user_id=session['user_id']
+            user_id=user_id
         ).first()
         
         if not conversation:
@@ -857,23 +668,16 @@ def unsave_chat_conversation(conversation_id):
         return jsonify({'message': 'Conversation unsaved successfully'})
     except Exception as e:
         db.session.rollback()
-        print(f"Error in unsave_chat_conversation: {e}")
+        logger.error(f"Error in unsave_chat_conversation: {e}")
         return jsonify({'error': 'Failed to unsave conversation'}), 500
 
 # Profile API endpoints
 @app.route('/api/profile', methods=['GET'])
 @login_required
-def get_profile():
+def get_profile(user_id):
     """Get current user profile"""
     try:
-        # Additional debug logging for production
-        if os.environ.get('FLASK_ENV') == 'production':
-            print(f"🔍 Profile request - Session keys: {list(session.keys())}")
-            print(f"   User ID in session: {session.get('user_id', 'NOT FOUND')}")
-            print(f"   Cookies received: {list(request.cookies.keys())}")
-            print(f"   Request origin: {request.headers.get('Origin', 'N/A')}")
-        
-        user = User.query.get(session['user_id'])
+        user = User.query.get(user_id)
         if not user:
             return jsonify({'error': 'User not found'}), 404
         
@@ -884,18 +688,15 @@ def get_profile():
             'created_at': user.created_at.strftime('%Y-%m-%d %H:%M') if user.created_at else None
         })
     except Exception as e:
-        print(f"Error in get_profile: {e}")
-        if os.environ.get('FLASK_ENV') == 'production':
-            import traceback
-            print(f"   Traceback: {traceback.format_exc()}")
+        logger.error(f"Error in get_profile: {e}")
         return jsonify({'error': 'Failed to get profile'}), 500
 
 @app.route('/api/profile', methods=['PUT'])
 @login_required
-def update_profile():
+def update_profile(user_id):
     """Update user profile"""
     try:
-        user = User.query.get(session['user_id'])
+        user = User.query.get(user_id)
         if not user:
             return jsonify({'error': 'User not found'}), 404
         
@@ -923,25 +724,12 @@ def update_profile():
         
     except Exception as e:
         db.session.rollback()
-        print(f"Error in update_profile: {e}")
+        logger.error(f"Error in update_profile: {e}")
         return jsonify({'error': 'Failed to update profile'}), 500
 
 # Initialize database and data when app starts (works in both dev and production)
 with app.app_context():
     db.create_all()
-    
-    # Ensure sessions table exists for Flask-Session
-    # Flask-Session should create it automatically, but let's verify
-    try:
-        from sqlalchemy import inspect
-        inspector = inspect(db.engine)
-        tables = inspector.get_table_names()
-        if 'sessions' not in tables:
-            print("⚠️  Warning: Sessions table not found. Flask-Session should create it on first use.")
-        else:
-            print("✅ Sessions table exists in database")
-    except Exception as e:
-        print(f"⚠️  Could not verify sessions table: {e}")
     
     # Initialize match schedule data from CSV
     init_match_data()
@@ -952,7 +740,7 @@ with app.app_context():
         admin.set_password('admin123')
         db.session.add(admin)
         db.session.commit()
-        print("Default admin user created: username='admin', password='admin123'")
+        logger.info("Default admin user created: username='admin', password='admin123'")
 
 @app.route('/api/venues', methods=['GET'])
 def get_venues():

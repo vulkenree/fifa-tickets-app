@@ -5,19 +5,49 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
-  withCredentials: true, // Important for session cookies
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
+// Add JWT token to all requests
+api.interceptors.request.use(
+  (config) => {
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('token');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Handle 401 errors (token expired or invalid)
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401 && typeof window !== 'undefined') {
+      // Clear token and redirect to login
+      localStorage.removeItem('token');
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 // Auth API
 export const authApi = {
   login: (credentials: LoginCredentials) =>
-    api.post<User>('/api/auth/login', credentials),
+    api.post<{ token: string; user: User }>('/api/auth/login', credentials),
   logout: () => api.post('/api/auth/logout'),
   register: (credentials: RegisterCredentials) =>
-    api.post<User>('/api/auth/register', credentials),
+    api.post<{ token: string; user: User }>('/api/auth/register', credentials),
   me: () => api.get<User>('/api/auth/me'),
 };
 
