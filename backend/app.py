@@ -19,9 +19,7 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', secrets.token_hex(32))
 
 # Session config for Next.js frontend
-app.config['SESSION_COOKIE_SAMESITE'] = 'None' if os.environ.get('FLASK_ENV') == 'production' else 'Lax'
-app.config['SESSION_COOKIE_SECURE'] = True if os.environ.get('FLASK_ENV') == 'production' else False
-app.config['SESSION_COOKIE_HTTPONLY'] = True
+# Note: Cookie settings are set again before Flask-Session initialization to ensure they're applied
 # Set permanent session lifetime (31 days default, but explicit is better)
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=31)
 
@@ -48,6 +46,37 @@ def after_request(response):
     response.headers['X-XSS-Protection'] = '1; mode=block'
     if os.environ.get('FLASK_ENV') == 'production':
         response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+        
+        # Ensure session cookie has correct attributes for cross-origin requests
+        # Flask-Session might not always respect config, so we enforce it here
+        # Handle both single string and list of Set-Cookie headers
+        set_cookie_headers = response.headers.getlist('Set-Cookie')
+        if set_cookie_headers:
+            updated_cookies = []
+            for cookie in set_cookie_headers:
+                # Check if it's a session cookie
+                if 'session=' in cookie or 'fifa_tickets:session:' in cookie:
+                    # Ensure Secure and SameSite=None are present
+                    if 'Secure' not in cookie:
+                        # Add Secure flag
+                        if cookie.endswith(';'):
+                            cookie = cookie[:-1] + '; Secure'
+                        else:
+                            cookie = cookie + '; Secure'
+                    
+                    # Ensure SameSite=None is present (required for cross-origin with Secure)
+                    if 'SameSite=None' not in cookie and 'SameSite=' not in cookie:
+                        if cookie.endswith(';'):
+                            cookie = cookie[:-1] + '; SameSite=None'
+                        else:
+                            cookie = cookie + '; SameSite=None'
+                updated_cookies.append(cookie)
+            
+            # Replace all Set-Cookie headers
+            response.headers.poplist('Set-Cookie')
+            for cookie in updated_cookies:
+                response.headers.add('Set-Cookie', cookie)
+    
     return response
 
 # Production settings
@@ -68,8 +97,26 @@ app.config['SESSION_PERMANENT'] = True
 app.config['SESSION_USE_SIGNER'] = True
 app.config['SESSION_KEY_PREFIX'] = 'fifa_tickets:session:'
 
+# Flask-Session cookie configuration (must be set before Session initialization)
+# These settings ensure cookies work with cross-origin requests in production
+if os.environ.get('FLASK_ENV') == 'production':
+    app.config['SESSION_COOKIE_SECURE'] = True  # Required for HTTPS
+    app.config['SESSION_COOKIE_SAMESITE'] = 'None'  # Required for cross-origin
+    app.config['SESSION_COOKIE_HTTPONLY'] = True
+    app.config['SESSION_COOKIE_DOMAIN'] = None  # Let browser set domain automatically
+
 # Initialize Flask-Session
-Session(app)
+try:
+    session_obj = Session(app)
+    if os.environ.get('FLASK_ENV') == 'production':
+        print("✅ Flask-Session initialized with SQLAlchemy backend")
+        print(f"   Cookie Secure: {app.config.get('SESSION_COOKIE_SECURE')}")
+        print(f"   Cookie SameSite: {app.config.get('SESSION_COOKIE_SAMESITE')}")
+        print(f"   Cookie HttpOnly: {app.config.get('SESSION_COOKIE_HTTPONLY')}")
+except Exception as e:
+    print(f"❌ ERROR: Flask-Session initialization failed: {e}")
+    print("   Sessions will fall back to in-memory storage (not recommended for production)")
+    raise
 
 # Initialize LLM service
 llm_service = LLMService()
@@ -785,6 +832,19 @@ def update_profile():
 # Initialize database and data when app starts (works in both dev and production)
 with app.app_context():
     db.create_all()
+    
+    # Ensure sessions table exists for Flask-Session
+    # Flask-Session should create it automatically, but let's verify
+    try:
+        from sqlalchemy import inspect
+        inspector = inspect(db.engine)
+        tables = inspector.get_table_names()
+        if 'sessions' not in tables:
+            print("⚠️  Warning: Sessions table not found. Flask-Session should create it on first use.")
+        else:
+            print("✅ Sessions table exists in database")
+    except Exception as e:
+        print(f"⚠️  Could not verify sessions table: {e}")
     
     # Initialize match schedule data from CSV
     init_match_data()
