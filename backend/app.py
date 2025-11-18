@@ -54,41 +54,68 @@ def after_request(response):
         if set_cookie_headers:
             updated_cookies = []
             for cookie in set_cookie_headers:
-                # Check if it's a session cookie
-                if 'session=' in cookie or 'fifa_tickets:session:' in cookie:
+                # Check if it's a session cookie (check for session= at start of cookie value)
+                is_session_cookie = cookie.startswith('session=') or 'session=' in cookie.split(';')[0]
+                
+                if is_session_cookie:
                     original_cookie = cookie
                     cookie_modified = False
                     
+                    # Log original cookie for debugging
+                    if os.environ.get('FLASK_ENV') == 'production':
+                        print(f"🔍 Processing session cookie in after_request:")
+                        print(f"   Original: {cookie[:150]}")
+                        print(f"   Has Secure: {'Secure' in cookie}")
+                        print(f"   Has SameSite: {'SameSite' in cookie}")
+                    
                     # Ensure Secure and SameSite=None are present
                     if 'Secure' not in cookie:
-                        # Add Secure flag
-                        if cookie.endswith(';'):
-                            cookie = cookie[:-1] + '; Secure'
+                        # Add Secure flag (before any existing attributes)
+                        # Insert before HttpOnly or at the end
+                        if '; HttpOnly' in cookie:
+                            cookie = cookie.replace('; HttpOnly', '; Secure; HttpOnly')
+                        elif '; Path=' in cookie:
+                            # Insert before Path
+                            cookie = cookie.replace('; Path=', '; Secure; Path=')
                         else:
+                            # Add at the end
                             cookie = cookie + '; Secure'
                         cookie_modified = True
                     
                     # Ensure SameSite=None is present (required for cross-origin with Secure)
-                    if 'SameSite=None' not in cookie and 'SameSite=' not in cookie:
-                        if cookie.endswith(';'):
-                            cookie = cookie[:-1] + '; SameSite=None'
+                    if 'SameSite=None' not in cookie:
+                        if 'SameSite=Lax' in cookie:
+                            cookie = cookie.replace('SameSite=Lax', 'SameSite=None')
+                            cookie_modified = True
+                        elif 'SameSite=Strict' in cookie:
+                            cookie = cookie.replace('SameSite=Strict', 'SameSite=None')
+                            cookie_modified = True
+                        elif 'SameSite=' in cookie:
+                            # Has SameSite but not None - replace it
+                            import re
+                            cookie = re.sub(r'SameSite=[^;]+', 'SameSite=None', cookie)
+                            cookie_modified = True
                         else:
-                            cookie = cookie + '; SameSite=None'
-                        cookie_modified = True
-                    elif 'SameSite=Lax' in cookie or 'SameSite=Strict' in cookie:
-                        # Replace Lax/Strict with None for cross-origin
-                        cookie = cookie.replace('SameSite=Lax', 'SameSite=None')
-                        cookie = cookie.replace('SameSite=Strict', 'SameSite=None')
-                        cookie_modified = True
+                            # No SameSite at all - add it
+                            # Insert before Path or at the end
+                            if '; Path=' in cookie:
+                                cookie = cookie.replace('; Path=', '; SameSite=None; Path=')
+                            elif '; HttpOnly' in cookie:
+                                cookie = cookie.replace('; HttpOnly', '; SameSite=None; HttpOnly')
+                            else:
+                                cookie = cookie + '; SameSite=None'
+                            cookie_modified = True
                     
                     # Debug logging for cookie modification
-                    if cookie_modified and os.environ.get('FLASK_ENV') == 'production':
-                        print(f"🍪 Cookie attributes modified:")
-                        print(f"   Original: {original_cookie[:100]}...")
-                        print(f"   Updated:  {cookie[:100]}...")
-                        print(f"   Has Secure: {'Secure' in cookie}")
-                        print(f"   Has SameSite=None: {'SameSite=None' in cookie}")
-                        print(f"   Has HttpOnly: {'HttpOnly' in cookie}")
+                    if os.environ.get('FLASK_ENV') == 'production':
+                        if cookie_modified:
+                            print(f"🍪 Cookie attributes MODIFIED:")
+                            print(f"   Updated:  {cookie[:150]}")
+                            print(f"   Has Secure: {'Secure' in cookie}")
+                            print(f"   Has SameSite=None: {'SameSite=None' in cookie}")
+                            print(f"   Has HttpOnly: {'HttpOnly' in cookie}")
+                        else:
+                            print(f"✅ Cookie already has correct attributes")
                     
                 updated_cookies.append(cookie)
             
