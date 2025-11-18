@@ -6,8 +6,11 @@ import { User, LoginCredentials, RegisterCredentials } from '@/lib/types';
 export function useAuth() {
   const router = useRouter();
   
-  const { data: user, error, mutate } = useSWR<User>(
-    typeof window !== 'undefined' && localStorage.getItem('token') ? '/api/auth/me' : null,
+  // Check if token exists
+  const hasToken = typeof window !== 'undefined' && localStorage.getItem('token');
+  
+  const { data: user, error, isLoading: swrLoading, mutate } = useSWR<User>(
+    hasToken ? '/api/auth/me' : null,
     () => authApi.me().then(res => res.data),
     {
       shouldRetryOnError: false,
@@ -56,9 +59,13 @@ export function useAuth() {
     }
   };
 
+  // Only show loading if we have a token and SWR is loading
+  // If no token, we're not loading (user is not authenticated)
+  const isLoading = hasToken ? swrLoading : false;
+
   return {
     user,
-    isLoading: !error && !user,
+    isLoading,
     isError: error,
     login,
     register,
