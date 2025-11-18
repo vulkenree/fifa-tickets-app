@@ -56,6 +56,9 @@ def after_request(response):
             for cookie in set_cookie_headers:
                 # Check if it's a session cookie
                 if 'session=' in cookie or 'fifa_tickets:session:' in cookie:
+                    original_cookie = cookie
+                    cookie_modified = False
+                    
                     # Ensure Secure and SameSite=None are present
                     if 'Secure' not in cookie:
                         # Add Secure flag
@@ -63,6 +66,7 @@ def after_request(response):
                             cookie = cookie[:-1] + '; Secure'
                         else:
                             cookie = cookie + '; Secure'
+                        cookie_modified = True
                     
                     # Ensure SameSite=None is present (required for cross-origin with Secure)
                     if 'SameSite=None' not in cookie and 'SameSite=' not in cookie:
@@ -70,6 +74,22 @@ def after_request(response):
                             cookie = cookie[:-1] + '; SameSite=None'
                         else:
                             cookie = cookie + '; SameSite=None'
+                        cookie_modified = True
+                    elif 'SameSite=Lax' in cookie or 'SameSite=Strict' in cookie:
+                        # Replace Lax/Strict with None for cross-origin
+                        cookie = cookie.replace('SameSite=Lax', 'SameSite=None')
+                        cookie = cookie.replace('SameSite=Strict', 'SameSite=None')
+                        cookie_modified = True
+                    
+                    # Debug logging for cookie modification
+                    if cookie_modified and os.environ.get('FLASK_ENV') == 'production':
+                        print(f"🍪 Cookie attributes modified:")
+                        print(f"   Original: {original_cookie[:100]}...")
+                        print(f"   Updated:  {cookie[:100]}...")
+                        print(f"   Has Secure: {'Secure' in cookie}")
+                        print(f"   Has SameSite=None: {'SameSite=None' in cookie}")
+                        print(f"   Has HttpOnly: {'HttpOnly' in cookie}")
+                    
                 updated_cookies.append(cookie)
             
             # Replace all Set-Cookie headers
