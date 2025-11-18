@@ -7,7 +7,18 @@ import re
 import os
 import secrets
 import csv
+import sys
+import logging
 from llm_service import LLMService
+
+# Configure logging to ensure all messages are captured in Railway
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    stream=sys.stdout,
+    force=True  # Override any existing configuration
+)
+logger = logging.getLogger(__name__)
 
 # FIFA 2026 World Cup date range
 FIFA_MIN_DATE = date(2026, 6, 11)
@@ -44,29 +55,48 @@ def after_request(response):
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['X-Frame-Options'] = 'DENY'
     response.headers['X-XSS-Protection'] = '1; mode=block'
-    if os.environ.get('FLASK_ENV') == 'production':
+    
+    # Always log in production to debug cookie issues
+    flask_env = os.environ.get('FLASK_ENV', 'not_set')
+    is_production = flask_env == 'production'
+    
+    if is_production:
         response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
         
         # Ensure session cookie has correct attributes for cross-origin requests
         # Flask-Session might not always respect config, so we enforce it here
         # Handle both single string and list of Set-Cookie headers
         set_cookie_headers = response.headers.getlist('Set-Cookie')
+        
+        # Debug: Always log if we're in production and there are cookies
+        if set_cookie_headers:
+            logger.info(f"🔍 after_request hook triggered (FLASK_ENV={flask_env})")
+            logger.info(f"   Found {len(set_cookie_headers)} Set-Cookie header(s)")
+            logger.info(f"   Request path: {request.path}")
+            logger.info(f"   Request method: {request.method}")
+            sys.stdout.flush()  # Force flush to ensure Railway captures it
+        
         if set_cookie_headers:
             updated_cookies = []
             for cookie in set_cookie_headers:
                 # Check if it's a session cookie (check for session= at start of cookie value)
                 is_session_cookie = cookie.startswith('session=') or 'session=' in cookie.split(';')[0]
                 
+                logger.info(f"   Cookie check: starts_with_session={cookie.startswith('session=')}, contains_session={'session=' in cookie.split(';')[0]}")
+                logger.info(f"   Cookie preview: {cookie[:80]}...")
+                sys.stdout.flush()
+                
                 if is_session_cookie:
                     original_cookie = cookie
                     cookie_modified = False
                     
-                    # Log original cookie for debugging
-                    if os.environ.get('FLASK_ENV') == 'production':
-                        print(f"🔍 Processing session cookie in after_request:")
-                        print(f"   Original: {cookie[:150]}")
-                        print(f"   Has Secure: {'Secure' in cookie}")
-                        print(f"   Has SameSite: {'SameSite' in cookie}")
+                    # Always log in production
+                    logger.info(f"🔍 Processing session cookie in after_request:")
+                    logger.info(f"   Original: {cookie[:200]}")
+                    logger.info(f"   Has Secure: {'Secure' in cookie}")
+                    logger.info(f"   Has SameSite: {'SameSite' in cookie}")
+                    logger.info(f"   Cookie length: {len(cookie)}")
+                    sys.stdout.flush()
                     
                     # Ensure Secure and SameSite=None are present
                     if 'Secure' not in cookie:
@@ -106,23 +136,31 @@ def after_request(response):
                                 cookie = cookie + '; SameSite=None'
                             cookie_modified = True
                     
-                    # Debug logging for cookie modification
-                    if os.environ.get('FLASK_ENV') == 'production':
-                        if cookie_modified:
-                            print(f"🍪 Cookie attributes MODIFIED:")
-                            print(f"   Updated:  {cookie[:150]}")
-                            print(f"   Has Secure: {'Secure' in cookie}")
-                            print(f"   Has SameSite=None: {'SameSite=None' in cookie}")
-                            print(f"   Has HttpOnly: {'HttpOnly' in cookie}")
-                        else:
-                            print(f"✅ Cookie already has correct attributes")
+                    # Always log cookie modification in production
+                    if cookie_modified:
+                        logger.info(f"🍪 Cookie attributes MODIFIED:")
+                        logger.info(f"   Updated:  {cookie[:200]}")
+                        logger.info(f"   Has Secure: {'Secure' in cookie}")
+                        logger.info(f"   Has SameSite=None: {'SameSite=None' in cookie}")
+                        logger.info(f"   Has HttpOnly: {'HttpOnly' in cookie}")
+                    else:
+                        logger.info(f"✅ Cookie already has correct attributes")
+                else:
+                    logger.warning(f"⚠️  Cookie is NOT a session cookie, skipping modification")
+                sys.stdout.flush()
                     
                 updated_cookies.append(cookie)
             
             # Replace all Set-Cookie headers
+            logger.info(f"🔄 Replacing {len(response.headers.getlist('Set-Cookie'))} Set-Cookie header(s) with {len(updated_cookies)} updated cookie(s)")
             response.headers.poplist('Set-Cookie')
             for cookie in updated_cookies:
                 response.headers.add('Set-Cookie', cookie)
+                logger.info(f"   Added cookie: {cookie[:100]}...")
+            sys.stdout.flush()
+        else:
+            logger.warning(f"⚠️  No Set-Cookie headers found in response")
+            sys.stdout.flush()
     
     return response
 
@@ -156,10 +194,11 @@ if os.environ.get('FLASK_ENV') == 'production':
 try:
     session_obj = Session(app)
     if os.environ.get('FLASK_ENV') == 'production':
-        print("✅ Flask-Session initialized with SQLAlchemy backend")
-        print(f"   Cookie Secure: {app.config.get('SESSION_COOKIE_SECURE')}")
-        print(f"   Cookie SameSite: {app.config.get('SESSION_COOKIE_SAMESITE')}")
-        print(f"   Cookie HttpOnly: {app.config.get('SESSION_COOKIE_HTTPONLY')}")
+        logger.info("✅ Flask-Session initialized with SQLAlchemy backend")
+        logger.info(f"   Cookie Secure: {app.config.get('SESSION_COOKIE_SECURE')}")
+        logger.info(f"   Cookie SameSite: {app.config.get('SESSION_COOKIE_SAMESITE')}")
+        logger.info(f"   Cookie HttpOnly: {app.config.get('SESSION_COOKIE_HTTPONLY')}")
+        sys.stdout.flush()
 except Exception as e:
     print(f"❌ ERROR: Flask-Session initialization failed: {e}")
     print("   Sessions will fall back to in-memory storage (not recommended for production)")
@@ -291,10 +330,11 @@ def api_login():
         
         # Debug logging in production
         if os.environ.get('FLASK_ENV') == 'production':
-            print(f"✅ Login successful for user {username} (ID: {user.id})")
-            print(f"   Session ID: {session.get('_id', 'N/A')}")
-            print(f"   Session permanent: {session.permanent}")
-            print(f"   User ID in session: {session.get('user_id')}")
+            logger.info(f"✅ Login successful for user {username} (ID: {user.id})")
+            logger.info(f"   Session ID: {session.get('_id', 'N/A')}")
+            logger.info(f"   Session permanent: {session.permanent}")
+            logger.info(f"   User ID in session: {session.get('user_id')}")
+            sys.stdout.flush()
         
         return jsonify({
             'id': user.id,
