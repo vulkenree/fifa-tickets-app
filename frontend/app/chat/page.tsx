@@ -73,7 +73,7 @@ export default function ChatPage() {
 
   const exampleQuestions = [
     "Which match do most of my friends have tickets for?",
-    "What's a good weekend where my friends have tickets and venues are close together?",
+    "What's a good weekend itinerary where my friends and I have tickets and the venues are close to each other?",
     "Show me all matches in New York that my friends are attending",
     "Which friends are going to Match M50?",
     "Recommend matches where I can meet up with the most friends",
