@@ -50,7 +50,7 @@ RESPONSE GUIDELINES:
 - If you can't find specific information, say so clearly
 
 EXAMPLE QUESTIONS YOU CAN HANDLE:
-- "Which match has the most of my friends going to?"
+- "Which match do most of my friends have tickets for?"
 - "What's a good weekend where my friends have tickets and venues are close together?"
 - "Show me all matches in New York that my friends are attending"
 - "Which friends are going to Match M50?"
