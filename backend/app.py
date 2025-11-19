@@ -275,7 +275,7 @@ def detailed_health_check():
 
 @app.route('/api/tickets', methods=['GET'])
 @login_required
-def get_tickets():
+def get_tickets(user_id):
     """Get all tickets (all users can see all tickets)"""
     tickets = Ticket.query.order_by(Ticket.date.desc()).all()
     return jsonify([ticket.to_dict() for ticket in tickets])
