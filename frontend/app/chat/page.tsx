@@ -137,9 +137,9 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200">
+      <header className="bg-white border-b border-gray-200 flex-shrink-0">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-3">
@@ -182,12 +182,12 @@ export default function ChatPage() {
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[calc(100vh-200px)]">
+      <div className="flex-1 overflow-hidden max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-full">
           {/* Conversations Sidebar */}
-          <div className="lg:col-span-1">
-            <Card className="h-full">
-              <CardHeader>
+          <div className="lg:col-span-1 flex flex-col min-h-0">
+            <Card className="h-full flex flex-col">
+              <CardHeader className="flex-shrink-0">
                 <div className="flex justify-between items-center">
                   <CardTitle className="text-lg">Conversations</CardTitle>
                   <Button
@@ -200,7 +200,7 @@ export default function ChatPage() {
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-2 overflow-y-auto">
+              <CardContent className="flex-1 overflow-y-auto min-h-0">
                 {conversations.length === 0 ? (
                   <p className="text-gray-500 text-sm">No conversations yet</p>
                 ) : (
@@ -265,9 +265,9 @@ export default function ChatPage() {
           </div>
 
           {/* Chat Area */}
-          <div className="lg:col-span-3">
+          <div className="lg:col-span-3 flex flex-col min-h-0">
             <Card className="h-full flex flex-col">
-              <CardHeader>
+              <CardHeader className="flex-shrink-0">
                 <div className="flex justify-between items-center">
                   <div>
                     <CardTitle>Chat with AI Assistant</CardTitle>
@@ -287,9 +287,9 @@ export default function ChatPage() {
                 </div>
               </CardHeader>
               
-              <CardContent className="flex-1 flex flex-col min-h-0">
+              <CardContent className="flex-1 flex flex-col min-h-0 overflow-hidden">
                 {/* Messages Area */}
-                <div className="flex-1 overflow-y-auto mb-4 space-y-4 pr-2" style={{ maxHeight: '100%' }}>
+                <div className="flex-1 overflow-y-auto mb-4 space-y-4 pr-2 min-h-0">
                   {messages.length === 0 ? (
                     <div className="text-center py-12">
                       <Bot className="h-12 w-12 text-gray-400 mx-auto mb-4" />
