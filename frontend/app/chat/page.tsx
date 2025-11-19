@@ -287,9 +287,9 @@ export default function ChatPage() {
                 </div>
               </CardHeader>
               
-              <CardContent className="flex-1 flex flex-col">
+              <CardContent className="flex-1 flex flex-col min-h-0">
                 {/* Messages Area */}
-                <div className="flex-1 overflow-y-auto mb-4 space-y-4">
+                <div className="flex-1 overflow-y-auto mb-4 space-y-4 pr-2" style={{ maxHeight: '100%' }}>
                   {messages.length === 0 ? (
                     <div className="text-center py-12">
                       <Bot className="h-12 w-12 text-gray-400 mx-auto mb-4" />
