@@ -431,38 +431,40 @@ def init_match_data():
     """Initialize FIFA 2026 match schedule data from CSV if not already loaded or if data needs correction"""
     csv_path = os.path.join(os.path.dirname(__file__), 'data', 'fifa_match_schedule.csv')
     
-    # Force reload all match data to fix timezone issues
-    logger.info("Force reloading all match data to fix timezone issues...")
-    
-    # Delete all existing matches
-    Match.query.delete()
-    db.session.commit()
-    logger.info("Deleted all existing match records")
-    
-    if True:  # Always reload from CSV
-        # Load data from CSV if no matches exist
-        try:
-            with open(csv_path, 'r') as f:
-                reader = csv.DictReader(f)
-                match_count = 0
-                for row in reader:
-                    # Parse date explicitly to avoid timezone issues
-                    date_parts = row['date'].split('-')
-                    date_obj = datetime(int(date_parts[0]), int(date_parts[1]), int(date_parts[2])).date()
-                    
-                    match = Match(
-                        match_number=row['match_number'],
-                        date=date_obj,
-                        venue=row['venue']
-                    )
-                    db.session.add(match)
-                    match_count += 1
-                db.session.commit()
-                logger.info(f"Loaded {match_count} FIFA 2026 matches from CSV with timezone-safe parsing")
-        except FileNotFoundError:
-            logger.warning(f"Match schedule CSV not found at {csv_path}")
-        except Exception as e:
-            logger.error(f"Error loading match data: {e}")
+    try:
+        # Check if matches already exist
+        existing_count = Match.query.count()
+        if existing_count > 0:
+            logger.info(f"Match data already exists ({existing_count} matches). Skipping reload.")
+            return
+        
+        logger.info("Loading match data from CSV...")
+        
+        # Load data from CSV
+        with open(csv_path, 'r') as f:
+            reader = csv.DictReader(f)
+            match_count = 0
+            for row in reader:
+                # Parse date explicitly to avoid timezone issues
+                date_parts = row['date'].split('-')
+                date_obj = datetime(int(date_parts[0]), int(date_parts[1]), int(date_parts[2])).date()
+                
+                match = Match(
+                    match_number=row['match_number'],
+                    date=date_obj,
+                    venue=row['venue']
+                )
+                db.session.add(match)
+                match_count += 1
+            db.session.commit()
+            logger.info(f"Loaded {match_count} FIFA 2026 matches from CSV")
+    except FileNotFoundError:
+        logger.warning(f"Match schedule CSV not found at {csv_path}")
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error loading match data: {e}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
 
 @app.route('/api/matches', methods=['GET'])
 def get_matches():
@@ -729,18 +731,27 @@ def update_profile(user_id):
 
 # Initialize database and data when app starts (works in both dev and production)
 with app.app_context():
-    db.create_all()
-    
-    # Initialize match schedule data from CSV
-    init_match_data()
-    
-    # Create a default admin user if none exists
-    if not User.query.first():
-        admin = User(username='admin')
-        admin.set_password('admin123')
-        db.session.add(admin)
-        db.session.commit()
-        logger.info("Default admin user created: username='admin', password='admin123'")
+    try:
+        db.create_all()
+        
+        # Initialize match schedule data from CSV
+        init_match_data()
+        
+        # Create a default admin user if none exists
+        try:
+            if not User.query.first():
+                admin = User(username='admin')
+                admin.set_password('admin123')
+                db.session.add(admin)
+                db.session.commit()
+                logger.info("Default admin user created: username='admin', password='admin123'")
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error creating default admin user: {e}")
+    except Exception as e:
+        logger.error(f"Error during database initialization: {e}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
 
 @app.route('/api/venues', methods=['GET'])
 def get_venues():
