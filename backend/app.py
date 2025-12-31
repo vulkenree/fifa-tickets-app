@@ -277,8 +277,40 @@ def detailed_health_check():
 @login_required
 def get_tickets(user_id):
     """Get all tickets (all users can see all tickets)"""
-    tickets = Ticket.query.order_by(Ticket.date.desc()).all()
-    return jsonify([ticket.to_dict() for ticket in tickets])
+    try:
+        tickets = Ticket.query.order_by(Ticket.date.desc()).all()
+        logger.info(f"Retrieved {len(tickets)} tickets for user {user_id}")
+        ticket_dicts = []
+        for ticket in tickets:
+            try:
+                ticket_dicts.append(ticket.to_dict())
+            except Exception as e:
+                logger.error(f"Error serializing ticket {ticket.id}: {e}")
+                # Include ticket even if serialization fails for some fields
+                ticket_dict = {
+                    'id': ticket.id,
+                    'user_id': ticket.user_id,
+                    'username': ticket.user.username if ticket.user else 'Unknown',
+                    'name': ticket.name,
+                    'match_number': ticket.match_number,
+                    'date': ticket.date.strftime('%Y-%m-%d') if ticket.date else None,
+                    'venue': ticket.venue,
+                    'teams': getattr(ticket, 'teams', None),
+                    'match_type': getattr(ticket, 'match_type', None),
+                    'ticket_category': ticket.ticket_category,
+                    'quantity': ticket.quantity,
+                    'ticket_info': ticket.ticket_info,
+                    'ticket_price': ticket.ticket_price,
+                    'created_at': ticket.created_at.strftime('%Y-%m-%d %H:%M') if ticket.created_at else None,
+                    'updated_at': ticket.updated_at.strftime('%Y-%m-%d %H:%M') if ticket.updated_at else None
+                }
+                ticket_dicts.append(ticket_dict)
+        return jsonify(ticket_dicts)
+    except Exception as e:
+        logger.error(f"Error getting tickets: {e}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        return jsonify({'error': 'Failed to retrieve tickets'}), 500
 
 @app.route('/api/tickets', methods=['POST'])
 @login_required
@@ -519,12 +551,42 @@ def init_match_data():
         import traceback
         logger.error(f"Traceback: {traceback.format_exc()}")
 
+def ensure_ticket_columns_exist():
+    """Ensure teams and match_type columns exist in the ticket table"""
+    try:
+        from sqlalchemy import inspect, text
+        inspector = inspect(db.engine)
+        columns = [col['name'] for col in inspector.get_columns('ticket')]
+        
+        if 'teams' not in columns or 'match_type' not in columns:
+            logger.info("Adding missing columns to ticket table...")
+            with db.engine.connect() as conn:
+                if 'teams' not in columns:
+                    conn.execute(text('ALTER TABLE ticket ADD COLUMN teams VARCHAR(200)'))
+                    conn.commit()
+                    logger.info("Added 'teams' column to ticket table")
+                if 'match_type' not in columns:
+                    conn.execute(text('ALTER TABLE ticket ADD COLUMN match_type VARCHAR(50)'))
+                    conn.commit()
+                    logger.info("Added 'match_type' column to ticket table")
+            logger.info("Ticket table columns updated successfully")
+        else:
+            logger.info("Ticket table already has teams and match_type columns")
+    except Exception as e:
+        logger.error(f"Error ensuring ticket columns exist: {e}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+
 def backfill_ticket_match_data():
     """Backfill teams and match_type for existing tickets from Match table"""
     try:
+        # Ensure columns exist first
+        ensure_ticket_columns_exist()
+        
         # Get all tickets that are missing teams or match_type
+        from sqlalchemy import or_, null
         tickets_to_update = Ticket.query.filter(
-            (Ticket.teams == None) | (Ticket.match_type == None)
+            or_(Ticket.teams == None, Ticket.teams == null(), Ticket.match_type == None, Ticket.match_type == null())
         ).all()
         
         if not tickets_to_update:
@@ -533,19 +595,26 @@ def backfill_ticket_match_data():
         
         logger.info(f"Backfilling teams and match_type for {len(tickets_to_update)} tickets...")
         updated_count = 0
+        skipped_count = 0
         
         for ticket in tickets_to_update:
             # Find the corresponding match
             match = Match.query.filter_by(match_number=ticket.match_number).first()
-            if match:
+            if match and match.teams and match.match_type:
                 ticket.teams = match.teams
                 ticket.match_type = match.match_type
                 updated_count += 1
             else:
-                logger.warning(f"Match {ticket.match_number} not found for ticket {ticket.id}, skipping")
+                logger.warning(f"Match {ticket.match_number} not found or missing data for ticket {ticket.id}, skipping")
+                skipped_count += 1
         
-        db.session.commit()
-        logger.info(f"Backfilled {updated_count} tickets with teams and match_type data")
+        if updated_count > 0:
+            db.session.commit()
+            logger.info(f"Backfilled {updated_count} tickets with teams and match_type data")
+            if skipped_count > 0:
+                logger.warning(f"Skipped {skipped_count} tickets due to missing match data")
+        else:
+            logger.info("No tickets needed backfilling")
         
     except Exception as e:
         db.session.rollback()
