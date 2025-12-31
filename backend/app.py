@@ -599,22 +599,34 @@ def backfill_ticket_match_data():
         # Ensure columns exist first
         ensure_ticket_columns_exist()
         
-        # Get all tickets - check for None, empty string, or just whitespace
-        from sqlalchemy import or_, null, func
+        # Get all tickets
         all_tickets = Ticket.query.all()
         logger.info(f"Found {len(all_tickets)} total tickets to check")
         
+        if not all_tickets:
+            logger.info("No tickets found to backfill")
+            return
+        
         tickets_to_update = []
         for ticket in all_tickets:
+            # Use getattr with None as default, then check for None, empty, or '-'
             teams_value = getattr(ticket, 'teams', None)
             match_type_value = getattr(ticket, 'match_type', None)
+            
+            # Convert None to string for comparison, handle both None and empty string
+            teams_str = str(teams_value) if teams_value is not None else ''
+            match_type_str = str(match_type_value) if match_type_value is not None else ''
             
             # Check if teams or match_type is missing, None, empty, or just '-'
             needs_update = (
                 teams_value is None or 
-                (isinstance(teams_value, str) and (teams_value.strip() == '' or teams_value.strip() == '-')) or
+                teams_str.strip() == '' or 
+                teams_str.strip() == '-' or
+                teams_str.strip() == 'None' or
                 match_type_value is None or 
-                (isinstance(match_type_value, str) and (match_type_value.strip() == '' or match_type_value.strip() == '-'))
+                match_type_str.strip() == '' or 
+                match_type_str.strip() == '-' or
+                match_type_str.strip() == 'None'
             )
             
             if needs_update:
@@ -628,25 +640,44 @@ def backfill_ticket_match_data():
         updated_count = 0
         skipped_count = 0
         
+        # Verify matches are loaded
+        match_count = Match.query.count()
+        logger.info(f"Found {match_count} matches in database")
+        
+        if match_count == 0:
+            logger.warning("No matches found in database. Cannot backfill tickets.")
+            return
+        
         for ticket in tickets_to_update:
             # Find the corresponding match
             match = Match.query.filter_by(match_number=ticket.match_number).first()
-            if match and match.teams and match.match_type:
-                ticket.teams = match.teams
-                ticket.match_type = match.match_type
-                updated_count += 1
-                logger.debug(f"Updated ticket {ticket.id} (match {ticket.match_number}) with teams={match.teams}, match_type={match.match_type}")
+            if match:
+                # Check if match has the required data
+                if match.teams and match.match_type and match.teams.strip() != '' and match.match_type.strip() != '':
+                    ticket.teams = match.teams
+                    ticket.match_type = match.match_type
+                    updated_count += 1
+                    logger.info(f"Updated ticket {ticket.id} (match {ticket.match_number}) with teams={match.teams}, match_type={match.match_type}")
+                else:
+                    logger.warning(f"Match {ticket.match_number} exists but missing teams or match_type data for ticket {ticket.id}")
+                    skipped_count += 1
             else:
-                logger.warning(f"Match {ticket.match_number} not found or missing data for ticket {ticket.id}, skipping")
+                logger.warning(f"Match {ticket.match_number} not found for ticket {ticket.id}, skipping")
                 skipped_count += 1
         
         if updated_count > 0:
-            db.session.commit()
-            logger.info(f"Backfilled {updated_count} tickets with teams and match_type data")
-            if skipped_count > 0:
-                logger.warning(f"Skipped {skipped_count} tickets due to missing match data")
+            try:
+                db.session.commit()
+                logger.info(f"Successfully backfilled {updated_count} tickets with teams and match_type data")
+            except Exception as commit_error:
+                db.session.rollback()
+                logger.error(f"Error committing backfill: {commit_error}")
+                raise
         else:
-            logger.info("No tickets needed backfilling")
+            logger.info("No tickets were updated")
+        
+        if skipped_count > 0:
+            logger.warning(f"Skipped {skipped_count} tickets due to missing match data")
         
     except Exception as e:
         db.session.rollback()

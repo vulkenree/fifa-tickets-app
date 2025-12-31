@@ -408,7 +408,7 @@ export default function DashboardPage() {
                               </SelectItem>
                             ))
                           ) : (
-                            <SelectItem value="" disabled>No matches available</SelectItem>
+                            <div className="px-2 py-1.5 text-sm text-gray-500">No matches available</div>
                           )}
                         </SelectContent>
                       </Select>
