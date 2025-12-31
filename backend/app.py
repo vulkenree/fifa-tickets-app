@@ -328,13 +328,15 @@ def create_ticket(user_id):
         except ValueError:
             return jsonify({'error': 'Ticket price must be a valid number'}), 400
     
-    # Create ticket
+    # Create ticket - auto-populate teams and match_type from Match record
     ticket = Ticket(
         user_id=user_id,
         name=data['name'],
         match_number=data['match_number'],
         date=date_obj,
         venue=data['venue'],
+        teams=match.teams,
+        match_type=match.match_type,
         ticket_category=data['ticket_category'],
         quantity=quantity,
         ticket_info=data.get('ticket_info', ''),
@@ -399,11 +401,13 @@ def update_ticket(ticket_id, user_id):
         except ValueError:
             return jsonify({'error': 'Ticket price must be a valid number'}), 400
     
-    # Update ticket
+    # Update ticket - auto-populate teams and match_type from Match record
     ticket.name = data['name']
     ticket.match_number = data['match_number']
     ticket.date = date_obj
     ticket.venue = data['venue']
+    ticket.teams = match.teams
+    ticket.match_type = match.match_type
     ticket.ticket_category = data['ticket_category']
     ticket.quantity = quantity
     ticket.ticket_info = data.get('ticket_info', '')
@@ -428,38 +432,87 @@ def delete_ticket(ticket_id, user_id):
     return jsonify({'message': 'Ticket deleted successfully'})
 
 def init_match_data():
-    """Initialize FIFA 2026 match schedule data from CSV if not already loaded or if data needs correction"""
-    csv_path = os.path.join(os.path.dirname(__file__), 'data', 'fifa_match_schedule.csv')
+    """Initialize FIFA 2026 match schedule data from CSVs - merges match_games.csv with fifa_match_schedule.csv"""
+    match_games_path = os.path.join(os.path.dirname(__file__), 'data', 'match_games.csv')
+    schedule_path = os.path.join(os.path.dirname(__file__), 'data', 'fifa_match_schedule.csv')
     
     try:
-        # Check if matches already exist
-        existing_count = Match.query.count()
-        if existing_count > 0:
-            logger.info(f"Match data already exists ({existing_count} matches). Skipping reload.")
+        # Load match games data (teams and match_type)
+        match_games_data = {}
+        if os.path.exists(match_games_path):
+            logger.info("Loading match games data from CSV...")
+            with open(match_games_path, 'r') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    match_number = row['Match Number'].strip()
+                    match_games_data[match_number] = {
+                        'teams': row['Game'].strip(),
+                        'match_type': row['Match Type'].strip()
+                    }
+            logger.info(f"Loaded {len(match_games_data)} match games from CSV")
+        else:
+            logger.warning(f"Match games CSV not found at {match_games_path}")
             return
         
-        logger.info("Loading match data from CSV...")
+        # Load schedule data (date and venue)
+        schedule_data = {}
+        if os.path.exists(schedule_path):
+            logger.info("Loading match schedule data from CSV...")
+            with open(schedule_path, 'r') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    match_number = row['match_number'].strip()
+                    # Parse date explicitly to avoid timezone issues
+                    date_parts = row['date'].split('-')
+                    date_obj = datetime(int(date_parts[0]), int(date_parts[1]), int(date_parts[2])).date()
+                    schedule_data[match_number] = {
+                        'date': date_obj,
+                        'venue': row['venue'].strip()
+                    }
+            logger.info(f"Loaded {len(schedule_data)} match schedules from CSV")
+        else:
+            logger.warning(f"Match schedule CSV not found at {schedule_path}")
+            return
         
-        # Load data from CSV
-        with open(csv_path, 'r') as f:
-            reader = csv.DictReader(f)
-            match_count = 0
-            for row in reader:
-                # Parse date explicitly to avoid timezone issues
-                date_parts = row['date'].split('-')
-                date_obj = datetime(int(date_parts[0]), int(date_parts[1]), int(date_parts[2])).date()
-                
+        # Merge data and update/create Match records
+        updated_count = 0
+        created_count = 0
+        
+        for match_number in match_games_data.keys():
+            if match_number not in schedule_data:
+                logger.warning(f"Match {match_number} found in match_games.csv but not in fifa_match_schedule.csv, skipping")
+                continue
+            
+            games_info = match_games_data[match_number]
+            schedule_info = schedule_data[match_number]
+            
+            # Use get_or_create pattern - query first, then update or create
+            existing_match = Match.query.filter_by(match_number=match_number).first()
+            
+            if existing_match:
+                # Update existing match
+                existing_match.date = schedule_info['date']
+                existing_match.venue = schedule_info['venue']
+                existing_match.teams = games_info['teams']
+                existing_match.match_type = games_info['match_type']
+                updated_count += 1
+            else:
+                # Create new match
                 match = Match(
-                    match_number=row['match_number'],
-                    date=date_obj,
-                    venue=row['venue']
+                    match_number=match_number,
+                    date=schedule_info['date'],
+                    venue=schedule_info['venue'],
+                    teams=games_info['teams'],
+                    match_type=games_info['match_type']
                 )
                 db.session.add(match)
-                match_count += 1
-            db.session.commit()
-            logger.info(f"Loaded {match_count} FIFA 2026 matches from CSV")
-    except FileNotFoundError:
-        logger.warning(f"Match schedule CSV not found at {csv_path}")
+                created_count += 1
+        
+        db.session.commit()
+        logger.info(f"Match data initialization complete: {created_count} created, {updated_count} updated")
+        
+    except FileNotFoundError as e:
+        logger.warning(f"CSV file not found: {e}")
     except Exception as e:
         db.session.rollback()
         logger.error(f"Error loading match data: {e}")

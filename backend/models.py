@@ -10,12 +10,16 @@ class Match(db.Model):
     match_number = db.Column(db.String(10), unique=True, nullable=False, index=True)
     date = db.Column(db.Date, nullable=False)
     venue = db.Column(db.String(100), nullable=False)
+    teams = db.Column(db.String(200), nullable=True)
+    match_type = db.Column(db.String(50), nullable=True)
     
     def to_dict(self):
         return {
             'match_number': self.match_number,
             'date': self.date.strftime('%Y-%m-%d'),
-            'venue': self.venue
+            'venue': self.venue,
+            'teams': self.teams,
+            'match_type': self.match_type
         }
     
     def __repr__(self):
@@ -50,6 +54,8 @@ class Ticket(db.Model):
     match_number = db.Column(db.String(20), nullable=False)
     date = db.Column(db.Date, nullable=False)
     venue = db.Column(db.String(100), nullable=False)
+    teams = db.Column(db.String(200), nullable=True)
+    match_type = db.Column(db.String(50), nullable=True)
     ticket_category = db.Column(db.String(50), nullable=False)
     quantity = db.Column(db.Integer, nullable=False)
     ticket_info = db.Column(db.Text)
@@ -66,6 +72,8 @@ class Ticket(db.Model):
             'match_number': self.match_number,
             'date': self.date.strftime('%Y-%m-%d') if self.date else None,
             'venue': self.venue,
+            'teams': self.teams,
+            'match_type': self.match_type,
             'ticket_category': self.ticket_category,
             'quantity': self.quantity,
             'ticket_info': self.ticket_info,

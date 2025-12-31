@@ -26,6 +26,8 @@ const ticketSchema = z.object({
   match_number: z.string().min(1, 'Match number is required'),
   date: z.string().min(1, 'Date is required'),
   venue: z.string().min(1, 'Venue is required'),
+  teams: z.string().optional(),
+  match_type: z.string().optional(),
   ticket_category: z.string().min(1, 'Ticket category is required'),
   quantity: z.number().min(1, 'Quantity must be at least 1'),
   ticket_info: z.string().optional(),
@@ -44,6 +46,8 @@ export default function DashboardPage() {
   const [venueFilter, setVenueFilter] = useState<string[]>([]);
   const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
   const [matchNumberFilter, setMatchNumberFilter] = useState<string[]>([]);
+  const [matchTypeFilter, setMatchTypeFilter] = useState<string[]>([]);
+  const [teamsFilter, setTeamsFilter] = useState<string[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTicket, setEditingTicket] = useState<Ticket | null>(null);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
@@ -59,6 +63,8 @@ export default function DashboardPage() {
       match_number: '',
       date: '',
       venue: '',
+      teams: '',
+      match_type: '',
       ticket_category: '',
       quantity: 1,
       ticket_info: '',
@@ -75,6 +81,16 @@ export default function DashboardPage() {
     const bNum = parseInt(b.replace('M', ''));
     return aNum - bNum;
   });
+  const uniqueMatchTypes = [...new Set(tickets.map(t => t.match_type).filter(Boolean))].sort();
+  
+  // Extract unique teams from tickets (parse "Team1 - Team2" format)
+  const uniqueTeams = [...new Set(
+    tickets
+      .map(t => t.teams)
+      .filter(Boolean)
+      .flatMap(teams => teams.split(' - ').map(team => team.trim()))
+      .filter(team => team.length > 0)
+  )].sort();
 
   // Sort matches numerically by match number
   const sortedMatches = [...matches].sort((a, b) => {
@@ -91,6 +107,8 @@ export default function DashboardPage() {
       form.setValue('match_number', match.match_number);
       form.setValue('date', match.date);
       form.setValue('venue', match.venue);
+      form.setValue('teams', match.teams);
+      form.setValue('match_type', match.match_type);
     }
   };
 
@@ -138,6 +156,8 @@ export default function DashboardPage() {
     setVenueFilter([]);
     setCategoryFilter([]);
     setMatchNumberFilter([]);
+    setMatchTypeFilter([]);
+    setTeamsFilter([]);
   };
 
   // Filter tickets
@@ -153,8 +173,13 @@ export default function DashboardPage() {
     const matchesVenue = venueFilter.length === 0 || venueFilter.includes(ticket.venue);
     const matchesCategory = categoryFilter.length === 0 || categoryFilter.includes(ticket.ticket_category);
     const matchesMatchNumber = matchNumberFilter.length === 0 || matchNumberFilter.includes(ticket.match_number);
+    const matchesMatchType = matchTypeFilter.length === 0 || (ticket.match_type && matchTypeFilter.includes(ticket.match_type));
     
-    return matchesSearch && matchesUser && matchesVenue && matchesCategory && matchesMatchNumber;
+    // For teams filter, check if any selected team appears in the ticket's teams string
+    const matchesTeams = teamsFilter.length === 0 || 
+      (ticket.teams && teamsFilter.some(team => ticket.teams.toLowerCase().includes(team.toLowerCase())));
+    
+    return matchesSearch && matchesUser && matchesVenue && matchesCategory && matchesMatchNumber && matchesMatchType && matchesTeams;
   });
 
   // Sort filtered tickets
@@ -192,6 +217,14 @@ export default function DashboardPage() {
         aValue = a.venue?.toString().toLowerCase() || '';
         bValue = b.venue?.toString().toLowerCase() || '';
         break;
+      case 'teams':
+        aValue = a.teams?.toString().toLowerCase() || '';
+        bValue = b.teams?.toString().toLowerCase() || '';
+        break;
+      case 'match_type':
+        aValue = a.match_type?.toString().toLowerCase() || '';
+        bValue = b.match_type?.toString().toLowerCase() || '';
+        break;
       case 'ticket_category':
         aValue = a.ticket_category?.toString().toLowerCase() || '';
         bValue = b.ticket_category?.toString().toLowerCase() || '';
@@ -227,6 +260,8 @@ export default function DashboardPage() {
       match_number: ticket.match_number,
       date: ticket.date,
       venue: ticket.venue,
+      teams: ticket.teams || '',
+      match_type: ticket.match_type || '',
       ticket_category: ticket.ticket_category,
       quantity: ticket.quantity,
       ticket_info: ticket.ticket_info || '',
@@ -388,6 +423,32 @@ export default function DashboardPage() {
                       )}
                     </div>
 
+                    {/* Teams */}
+                    <div className="space-y-2">
+                      <Label htmlFor="teams">Teams</Label>
+                      <Input
+                        id="teams"
+                        type="text"
+                        {...form.register('teams')}
+                        readOnly
+                        className="bg-gray-50"
+                      />
+                      <small className="text-gray-500">Auto-filled from match schedule</small>
+                    </div>
+
+                    {/* Match Type */}
+                    <div className="space-y-2">
+                      <Label htmlFor="match_type">Match Type</Label>
+                      <Input
+                        id="match_type"
+                        type="text"
+                        {...form.register('match_type')}
+                        readOnly
+                        className="bg-gray-50"
+                      />
+                      <small className="text-gray-500">Auto-filled from match schedule</small>
+                    </div>
+
                     {/* Name */}
                     <div className="space-y-2">
                       <Label htmlFor="name">Name *</Label>
@@ -497,7 +558,7 @@ export default function DashboardPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <SearchableSelect
                 options={uniqueUsers.map(user => ({ value: user, label: user }))}
                 value={userFilter}
@@ -531,6 +592,24 @@ export default function DashboardPage() {
                 onChange={(value) => setMatchNumberFilter(Array.isArray(value) ? value : [])}
                 placeholder="All Matches"
                 searchPlaceholder="Search match numbers..."
+                multiSelect={true}
+              />
+              
+              <SearchableSelect
+                options={uniqueMatchTypes.map(matchType => ({ value: matchType, label: matchType }))}
+                value={matchTypeFilter}
+                onChange={(value) => setMatchTypeFilter(Array.isArray(value) ? value : [])}
+                placeholder="All Match Types"
+                searchPlaceholder="Search match types..."
+                multiSelect={true}
+              />
+              
+              <SearchableSelect
+                options={uniqueTeams.map(team => ({ value: team, label: team }))}
+                value={teamsFilter}
+                onChange={(value) => setTeamsFilter(Array.isArray(value) ? value : [])}
+                placeholder="All Teams"
+                searchPlaceholder="Search teams..."
                 multiSelect={true}
               />
             </div>
@@ -584,6 +663,18 @@ export default function DashboardPage() {
                       </TableHead>
                       <TableHead 
                         className="cursor-pointer hover:bg-gray-100 select-none" 
+                        onClick={() => handleSort('teams')}
+                      >
+                        Teams {sortColumn === 'teams' && (sortDirection === 'asc' ? '↑' : '↓')}
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-gray-100 select-none" 
+                        onClick={() => handleSort('match_type')}
+                      >
+                        Match Type {sortColumn === 'match_type' && (sortDirection === 'asc' ? '↑' : '↓')}
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-gray-100 select-none" 
                         onClick={() => handleSort('ticket_category')}
                       >
                         Category {sortColumn === 'ticket_category' && (sortDirection === 'asc' ? '↑' : '↓')}
@@ -617,6 +708,8 @@ export default function DashboardPage() {
                         <TableCell>{ticket.match_number}</TableCell>
                         <TableCell>{format(parseISO(ticket.date), 'MMM dd, yyyy')}</TableCell>
                         <TableCell>{ticket.venue}</TableCell>
+                        <TableCell>{ticket.teams || '-'}</TableCell>
+                        <TableCell>{ticket.match_type || '-'}</TableCell>
                         <TableCell>{ticket.ticket_category}</TableCell>
                         <TableCell>{ticket.quantity}</TableCell>
                         <TableCell>

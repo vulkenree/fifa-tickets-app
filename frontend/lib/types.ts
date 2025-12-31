@@ -13,6 +13,8 @@ export interface Ticket {
   match_number: string;
   date: string;
   venue: string;
+  teams: string;
+  match_type: string;
   ticket_category: string;
   quantity: number;
   ticket_info?: string;
@@ -23,6 +25,8 @@ export interface Match {
   match_number: string;
   date: string;
   venue: string;
+  teams: string;
+  match_type: string;
 }
 
 export interface LoginCredentials {
@@ -40,6 +44,8 @@ export interface TicketFormData {
   match_number: string;
   date: string;
   venue: string;
+  teams?: string;
+  match_type?: string;
   ticket_category: string;
   quantity: number;
   ticket_info?: string;

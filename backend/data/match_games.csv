@@ -1,0 +1,105 @@
+Match Number,Game,Match Type
+M1,Mexico - South Africa,Group stage
+M2,South Korea - UEFA Winner D,Group stage
+M3,Canada - UEFA Winner A,Group stage
+M4,USA - Paraguay,Group stage
+M5,Haiti - Scotland,Group stage
+M6,Australia - UEFA Winner C,Group stage
+M7,Brazil - Morocco,Group stage
+M8,Qatar - Switzerland,Group stage
+M9,Ivory Coast - Ecuador,Group stage
+M10,Germany - Curaçao,Group stage
+M11,Netherlands - Japan,Group stage
+M12,UEFA Winner B - Tunisia,Group stage
+M13,Saudi Arabia - Uruguay,Group stage
+M14,Spain - Cape Verde,Group stage
+M15,Iran - New Zealand,Group stage
+M16,Belgium - Egypt,Group stage
+M17,France - Senegal,Group stage
+M18,IC Winner 2 - Norway,Group stage
+M19,Argentina - Algeria,Group stage
+M20,Austria - Jordan,Group stage
+M21,Ghana - Panama,Group stage
+M22,England - Croatia,Group stage
+M23,Portugal - IC Winner 1,Group stage
+M24,Uzbekistan - Colombia,Group stage
+M25,UEFA Winner D - South Africa,Group stage
+M26,Switzerland - UEFA Winner A,Group stage
+M27,Canada - Qatar,Group stage
+M28,Mexico - South Korea,Group stage
+M29,Brazil - Haiti,Group stage
+M30,Scotland - Morocco,Group stage
+M31,UEFA Winner C - Paraguay,Group stage
+M32,USA - Australia,Group stage
+M33,Germany - Ivory Coast,Group stage
+M34,Ecuador - Curaçao,Group stage
+M35,Netherlands - UEFA Winner B,Group stage
+M36,Tunisia - Japan,Group stage
+M37,Uruguay - Cape Verde,Group stage
+M38,Spain - Saudi Arabia,Group stage
+M39,Belgium - Iran,Group stage
+M40,New Zealand - Egypt,Group stage
+M41,Norway - Senegal,Group stage
+M42,France - IC Winner 2,Group stage
+M43,Argentina - Austria,Group stage
+M44,Jordan - Algeria,Group stage
+M45,England - Ghana,Group stage
+M46,Panama - Croatia,Group stage
+M47,Portugal - Uzbekistan,Group stage
+M48,Colombia - IC Winner 1,Group stage
+M49,Scotland - Brazil,Group stage
+M50,Morocco - Haiti,Group stage
+M51,Switzerland - Canada,Group stage
+M52,UEFA Winner A - Qatar,Group stage
+M53,UEFA Winner D - Mexico,Group stage
+M54,South Africa - South Korea,Group stage
+M55,Curaçao - Ivory Coast,Group stage
+M56,Ecuador - Germany,Group stage
+M57,Japan - UEFA Winner B,Group stage
+M58,Tunisia - Netherlands,Group stage
+M59,UEFA Winner C - USA,Group stage
+M60,Paraguay - Australia,Group stage
+M61,Norway - France,Group stage
+M62,Senegal - IC Winner 2,Group stage
+M63,Egypt - Iran,Group stage
+M64,New Zealand - Belgium,Group stage
+M65,Cape Verde - Saudi Arabia,Group stage
+M66,Uruguay - Spain,Group stage
+M67,Panama - England,Group stage
+M68,Croatia - Ghana,Group stage
+M69,Algeria - Austria,Group stage
+M70,Jordan - Argentina,Group stage
+M71,Colombia - Portugal,Group stage
+M72,IC Winner 1 - Uzbekistan,Group stage
+M73,Group A Runner-up - Group B Runner-up,Round of 32
+M74,Group E Winner - Best 3rd place (A/B/C/D/F),Round of 32
+M75,Group F Winner - Group C Runner-up,Round of 32
+M76,Group C Winner - Group F Runner-up,Round of 32
+M77,Group I Winner - Best 3rd place (C/D/F/G/H),Round of 32
+M78,Group E Runner-up - Group I Runner-up,Round of 32
+M79,Group A Winner - Best 3rd place (C/E/F/H/I),Round of 32
+M80,Group L Winner - Best 3rd place (E/H/I/J/K),Round of 32
+M81,Group D Winner - Best 3rd place (B/E/F/I/J),Round of 32
+M82,Group G Winner - Best 3rd place (A/E/H/I/J),Round of 32
+M83,Group K Runner-up - Group L Runner-up,Round of 32
+M84,Group H Winner - Group J Runner-up,Round of 32
+M85,Group B Winner - Best 3rd place (E/F/G/I/J),Round of 32
+M86,Group D Runner-up - Group G Runner-up,Round of 32
+M87,Group J Winner - Group H Runner-up,Round of 32
+M88,Group K Winner - Best 3rd place (D/E/I/J/L),Round of 32
+M89,Winner Match 74 - Winner Match 77,Round of 16
+M90,Winner Match 73 - Winner Match 75,Round of 16
+M91,Winner Match 76 - Winner Match 78,Round of 16
+M92,Winner Match 79 - Winner Match 80,Round of 16
+M93,Winner Match 83 - Winner Match 84,Round of 16
+M94,Winner Match 81 - Winner Match 82,Round of 16
+M95,Winner Match 86 - Winner Match 88,Round of 16
+M96,Winner Match 85 - Winner Match 87,Round of 16
+M97,Winner Match 89 - Winner Match 90,Quarterfinal
+M98,Winner Match 93 - Winner Match 94,Quarterfinal
+M99,Winner Match 91 - Winner Match 92,Quarterfinal
+M100,Winner Match 95 - Winner Match 96,Quarterfinal
+M101,Winner Match 97 - Winner Match 98,Semifinal
+M102,Winner Match 99 - Winner Match 100,Semifinal
+M103,Loser Match 101 - Loser Match 102,Third-place match
+M104,Winner Match 101 - Winner Match 102,Final
