@@ -599,6 +599,14 @@ def backfill_ticket_match_data():
         # Ensure columns exist first
         ensure_ticket_columns_exist()
         
+        # Verify matches are loaded first
+        match_count = Match.query.count()
+        logger.info(f"Found {match_count} matches in database")
+        
+        if match_count == 0:
+            logger.warning("No matches found in database. Cannot backfill tickets.")
+            return
+        
         # Get all tickets
         all_tickets = Ticket.query.all()
         logger.info(f"Found {len(all_tickets)} total tickets to check")
@@ -640,13 +648,8 @@ def backfill_ticket_match_data():
         updated_count = 0
         skipped_count = 0
         
-        # Verify matches are loaded
-        match_count = Match.query.count()
-        logger.info(f"Found {match_count} matches in database")
-        
-        if match_count == 0:
-            logger.warning("No matches found in database. Cannot backfill tickets.")
-            return
+        # Use SQL UPDATE for better performance and reliability with NULL values
+        from sqlalchemy import text
         
         for ticket in tickets_to_update:
             # Find the corresponding match
@@ -654,10 +657,25 @@ def backfill_ticket_match_data():
             if match:
                 # Check if match has the required data
                 if match.teams and match.match_type and match.teams.strip() != '' and match.match_type.strip() != '':
-                    ticket.teams = match.teams
-                    ticket.match_type = match.match_type
-                    updated_count += 1
-                    logger.info(f"Updated ticket {ticket.id} (match {ticket.match_number}) with teams={match.teams}, match_type={match.match_type}")
+                    # Use direct SQL update to handle NULL values properly
+                    try:
+                        db.session.execute(
+                            text("""
+                                UPDATE ticket 
+                                SET teams = :teams, match_type = :match_type 
+                                WHERE id = :ticket_id
+                            """),
+                            {
+                                'teams': match.teams,
+                                'match_type': match.match_type,
+                                'ticket_id': ticket.id
+                            }
+                        )
+                        updated_count += 1
+                        logger.info(f"Updated ticket {ticket.id} (match {ticket.match_number}) with teams={match.teams}, match_type={match.match_type}")
+                    except Exception as update_error:
+                        logger.error(f"Error updating ticket {ticket.id}: {update_error}")
+                        skipped_count += 1
                 else:
                     logger.warning(f"Match {ticket.match_number} exists but missing teams or match_type data for ticket {ticket.id}")
                     skipped_count += 1
