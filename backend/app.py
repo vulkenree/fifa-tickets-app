@@ -465,6 +465,9 @@ def delete_ticket(ticket_id, user_id):
 
 def init_match_data():
     """Initialize FIFA 2026 match schedule data from CSVs - merges match_games.csv with fifa_match_schedule.csv"""
+    # Ensure match table has required columns first
+    ensure_match_columns_exist()
+    
     match_games_path = os.path.join(os.path.dirname(__file__), 'data', 'match_games.csv')
     schedule_path = os.path.join(os.path.dirname(__file__), 'data', 'fifa_match_schedule.csv')
     
@@ -506,7 +509,19 @@ def init_match_data():
             logger.warning(f"Match schedule CSV not found at {schedule_path}")
             return
         
-        # Merge data and update/create Match records
+        # Check for duplicate match numbers in match_games.csv
+        match_numbers_seen = set()
+        duplicates = []
+        for match_number in match_games_data.keys():
+            if match_number in match_numbers_seen:
+                duplicates.append(match_number)
+            match_numbers_seen.add(match_number)
+        
+        if duplicates:
+            logger.warning(f"Found duplicate match numbers in match_games.csv: {duplicates}")
+        
+        # Merge data and update/create Match records using SQL for reliability
+        from sqlalchemy import text
         updated_count = 0
         created_count = 0
         
@@ -518,16 +533,30 @@ def init_match_data():
             games_info = match_games_data[match_number]
             schedule_info = schedule_data[match_number]
             
-            # Use get_or_create pattern - query first, then update or create
+            # Check if match exists
             existing_match = Match.query.filter_by(match_number=match_number).first()
             
             if existing_match:
-                # Update existing match
-                existing_match.date = schedule_info['date']
-                existing_match.venue = schedule_info['venue']
-                existing_match.teams = games_info['teams']
-                existing_match.match_type = games_info['match_type']
-                updated_count += 1
+                # Update existing match using SQL to ensure teams column is updated
+                try:
+                    db.session.execute(
+                        text("""
+                            UPDATE match 
+                            SET date = :date, venue = :venue, teams = :teams, match_type = :match_type 
+                            WHERE match_number = :match_number
+                        """),
+                        {
+                            'date': schedule_info['date'],
+                            'venue': schedule_info['venue'],
+                            'teams': games_info['teams'],
+                            'match_type': games_info['match_type'],
+                            'match_number': match_number
+                        }
+                    )
+                    updated_count += 1
+                    logger.debug(f"Updated match {match_number} with teams={games_info['teams']}, match_type={games_info['match_type']}")
+                except Exception as update_error:
+                    logger.error(f"Error updating match {match_number}: {update_error}")
             else:
                 # Create new match
                 match = Match(
@@ -543,11 +572,60 @@ def init_match_data():
         db.session.commit()
         logger.info(f"Match data initialization complete: {created_count} created, {updated_count} updated")
         
+        # Verify the update worked
+        sample_match = Match.query.filter_by(match_number='M1').first()
+        if sample_match:
+            logger.info(f"Sample match M1: teams={sample_match.teams}, match_type={sample_match.match_type}")
+        else:
+            logger.warning("Could not find sample match M1 for verification")
+        
     except FileNotFoundError as e:
         logger.warning(f"CSV file not found: {e}")
     except Exception as e:
         db.session.rollback()
         logger.error(f"Error loading match data: {e}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+
+def ensure_match_columns_exist():
+    """Ensure teams and match_type columns exist in the match table"""
+    try:
+        from sqlalchemy import inspect, text
+        inspector = inspect(db.engine)
+        
+        # Check if match table exists
+        table_names = inspector.get_table_names()
+        if 'match' not in table_names:
+            logger.info("Match table does not exist yet, will be created by db.create_all()")
+            return
+        
+        columns = [col['name'] for col in inspector.get_columns('match')]
+        logger.info(f"Match table has columns: {columns}")
+        
+        if 'teams' not in columns or 'match_type' not in columns:
+            logger.info("Adding missing columns to match table...")
+            with db.engine.connect() as conn:
+                if 'teams' not in columns:
+                    try:
+                        conn.execute(text('ALTER TABLE match ADD COLUMN teams VARCHAR(200)'))
+                        conn.commit()
+                        logger.info("Added 'teams' column to match table")
+                    except Exception as e:
+                        logger.warning(f"Could not add 'teams' column (may already exist): {e}")
+                        conn.rollback()
+                if 'match_type' not in columns:
+                    try:
+                        conn.execute(text('ALTER TABLE match ADD COLUMN match_type VARCHAR(50)'))
+                        conn.commit()
+                        logger.info("Added 'match_type' column to match table")
+                    except Exception as e:
+                        logger.warning(f"Could not add 'match_type' column (may already exist): {e}")
+                        conn.rollback()
+            logger.info("Match table columns check complete")
+        else:
+            logger.info("Match table already has teams and match_type columns")
+    except Exception as e:
+        logger.error(f"Error ensuring match columns exist: {e}")
         import traceback
         logger.error(f"Traceback: {traceback.format_exc()}")
 
@@ -971,8 +1049,14 @@ with app.app_context():
     try:
         db.create_all()
         
-        # Initialize match schedule data from CSV (must run first)
+        # Ensure match table has teams and match_type columns (must run before init_match_data)
+        ensure_match_columns_exist()
+        
+        # Initialize match schedule data from CSV (must run first, populates teams and match_type)
         init_match_data()
+        
+        # Ensure ticket table has teams and match_type columns
+        ensure_ticket_columns_exist()
         
         # Backfill existing tickets with teams and match_type (runs after matches are loaded)
         backfill_ticket_match_data()
