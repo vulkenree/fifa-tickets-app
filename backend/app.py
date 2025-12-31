@@ -556,20 +556,36 @@ def ensure_ticket_columns_exist():
     try:
         from sqlalchemy import inspect, text
         inspector = inspect(db.engine)
+        
+        # Check if ticket table exists
+        table_names = inspector.get_table_names()
+        if 'ticket' not in table_names:
+            logger.info("Ticket table does not exist yet, will be created by db.create_all()")
+            return
+        
         columns = [col['name'] for col in inspector.get_columns('ticket')]
+        logger.info(f"Ticket table has columns: {columns}")
         
         if 'teams' not in columns or 'match_type' not in columns:
             logger.info("Adding missing columns to ticket table...")
             with db.engine.connect() as conn:
                 if 'teams' not in columns:
-                    conn.execute(text('ALTER TABLE ticket ADD COLUMN teams VARCHAR(200)'))
-                    conn.commit()
-                    logger.info("Added 'teams' column to ticket table")
+                    try:
+                        conn.execute(text('ALTER TABLE ticket ADD COLUMN teams VARCHAR(200)'))
+                        conn.commit()
+                        logger.info("Added 'teams' column to ticket table")
+                    except Exception as e:
+                        logger.warning(f"Could not add 'teams' column (may already exist): {e}")
+                        conn.rollback()
                 if 'match_type' not in columns:
-                    conn.execute(text('ALTER TABLE ticket ADD COLUMN match_type VARCHAR(50)'))
-                    conn.commit()
-                    logger.info("Added 'match_type' column to ticket table")
-            logger.info("Ticket table columns updated successfully")
+                    try:
+                        conn.execute(text('ALTER TABLE ticket ADD COLUMN match_type VARCHAR(50)'))
+                        conn.commit()
+                        logger.info("Added 'match_type' column to ticket table")
+                    except Exception as e:
+                        logger.warning(f"Could not add 'match_type' column (may already exist): {e}")
+                        conn.rollback()
+            logger.info("Ticket table columns check complete")
         else:
             logger.info("Ticket table already has teams and match_type columns")
     except Exception as e:
