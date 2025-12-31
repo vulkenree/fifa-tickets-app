@@ -789,6 +789,17 @@ def get_matches():
     sorted_matches = sorted(matches, key=lambda m: int(m.match_number.replace('M', '')))
     return jsonify([m.to_dict() for m in sorted_matches])
 
+@app.route('/api/admin/backfill-tickets', methods=['POST'])
+@login_required
+def manual_backfill_tickets(user_id):
+    """Manual endpoint to trigger ticket backfill - useful for production"""
+    try:
+        backfill_ticket_match_data()
+        return jsonify({'message': 'Ticket backfill completed successfully'}), 200
+    except Exception as e:
+        logger.error(f"Error in manual backfill: {e}")
+        return jsonify({'error': f'Backfill failed: {str(e)}'}), 500
+
 @app.route('/api/debug/matches', methods=['GET'])
 def debug_matches():
     """Debug endpoint to check specific match data"""
