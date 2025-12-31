@@ -39,7 +39,7 @@ type TicketForm = z.infer<typeof ticketSchema>;
 export default function DashboardPage() {
   const { user, logout } = useAuth();
   const { tickets, isLoading, createTicket, updateTicket, deleteTicket } = useTickets();
-  const { matches } = useMatches();
+  const { matches, isLoading: matchesLoading } = useMatches();
   
   const [searchTerm, setSearchTerm] = useState('');
   const [userFilter, setUserFilter] = useState<string[]>([]);
@@ -73,32 +73,38 @@ export default function DashboardPage() {
   });
 
   // Get unique values for filters
-  const uniqueUsers = [...new Set(tickets.map(t => t.username))];
-  const uniqueVenues = [...new Set(tickets.map(t => t.venue))];
-  const uniqueCategories = [...new Set(tickets.map(t => t.ticket_category))];
-  const uniqueMatchNumbers = [...new Set(tickets.map(t => t.match_number))].sort((a, b) => {
+  const uniqueUsers = [...new Set(tickets.map(t => t.username).filter(Boolean))].sort();
+  const uniqueVenues = [...new Set(tickets.map(t => t.venue).filter(Boolean))].sort();
+  const uniqueCategories = [...new Set(tickets.map(t => t.ticket_category).filter(Boolean))].sort();
+  const uniqueMatchNumbers = [...new Set(tickets.map(t => t.match_number).filter(Boolean))].sort((a, b) => {
     const aNum = parseInt(a.replace('M', ''));
     const bNum = parseInt(b.replace('M', ''));
     return aNum - bNum;
   });
-  const uniqueMatchTypes = [...new Set(tickets.map(t => t.match_type).filter(Boolean))].sort();
+  
+  // Filter out null, undefined, empty strings, and '-' for match types
+  const uniqueMatchTypes = [...new Set(
+    tickets
+      .map(t => t.match_type)
+      .filter(mt => mt && mt.trim() !== '' && mt.trim() !== '-')
+  )].sort();
   
   // Extract unique teams from tickets (parse "Team1 - Team2" format)
-  // Only include tickets that have teams data
+  // Only include tickets that have valid teams data (not null, empty, or '-')
   const uniqueTeams = [...new Set(
     tickets
-      .filter(t => t.teams) // Only process tickets with teams data
+      .filter(t => t.teams && t.teams.trim() !== '' && t.teams.trim() !== '-')
       .map(t => t.teams)
       .flatMap(teams => teams.split(' - ').map(team => team.trim()))
       .filter(team => team.length > 0)
   )].sort();
 
   // Sort matches numerically by match number
-  const sortedMatches = [...matches].sort((a, b) => {
+  const sortedMatches = matches && matches.length > 0 ? [...matches].sort((a, b) => {
     const aNum = parseInt(a.match_number.replace('M', ''));
     const bNum = parseInt(b.match_number.replace('M', ''));
     return aNum - bNum;
-  });
+  }) : [];
 
   // Handle match selection
   const handleMatchSelect = (matchNumber: string) => {
@@ -108,8 +114,8 @@ export default function DashboardPage() {
       form.setValue('match_number', match.match_number);
       form.setValue('date', match.date);
       form.setValue('venue', match.venue);
-      form.setValue('teams', match.teams);
-      form.setValue('match_type', match.match_type);
+      form.setValue('teams', match.teams || '');
+      form.setValue('match_type', match.match_type || '');
     }
   };
 
@@ -175,12 +181,20 @@ export default function DashboardPage() {
     const matchesCategory = categoryFilter.length === 0 || categoryFilter.includes(ticket.ticket_category);
     const matchesMatchNumber = matchNumberFilter.length === 0 || matchNumberFilter.includes(ticket.match_number);
     // Match type filter: if filter is empty, show all. If filter has values, only show tickets with match_type that matches
+    // Exclude tickets with null, empty, or '-' values when filter is active
     const matchesMatchType = matchTypeFilter.length === 0 || 
-      (ticket.match_type && matchTypeFilter.includes(ticket.match_type));
+      (ticket.match_type && 
+       ticket.match_type.trim() !== '' && 
+       ticket.match_type.trim() !== '-' && 
+       matchTypeFilter.includes(ticket.match_type));
     
     // Teams filter: if filter is empty, show all. If filter has values, only show tickets with teams that match
+    // Exclude tickets with null, empty, or '-' values when filter is active
     const matchesTeams = teamsFilter.length === 0 || 
-      (ticket.teams && teamsFilter.some(team => ticket.teams.toLowerCase().includes(team.toLowerCase())));
+      (ticket.teams && 
+       ticket.teams.trim() !== '' && 
+       ticket.teams.trim() !== '-' && 
+       teamsFilter.some(team => ticket.teams.toLowerCase().includes(team.toLowerCase())));
     
     return matchesSearch && matchesUser && matchesVenue && matchesCategory && matchesMatchNumber && matchesMatchType && matchesTeams;
   });
@@ -287,7 +301,7 @@ export default function DashboardPage() {
     setIsDialogOpen(true);
   };
 
-  if (isLoading) {
+  if (isLoading || matchesLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -379,16 +393,23 @@ export default function DashboardPage() {
                     {/* Match Number */}
                     <div className="space-y-2">
                       <Label htmlFor="match_number">Match Number *</Label>
-                      <Select onValueChange={handleMatchSelect} value={selectedMatch?.match_number || ''}>
+                      <Select 
+                        onValueChange={handleMatchSelect} 
+                        value={form.watch('match_number') || selectedMatch?.match_number || ''}
+                      >
                         <SelectTrigger>
-                          <SelectValue placeholder="Select a match" />
+                          <SelectValue placeholder={matchesLoading ? "Loading matches..." : "Select a match"} />
                         </SelectTrigger>
                         <SelectContent>
-                          {sortedMatches.map((match) => (
-                            <SelectItem key={match.match_number} value={match.match_number}>
-                              {match.match_number}
-                            </SelectItem>
-                          ))}
+                          {sortedMatches.length > 0 ? (
+                            sortedMatches.map((match) => (
+                              <SelectItem key={match.match_number} value={match.match_number}>
+                                {match.match_number}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="" disabled>No matches available</SelectItem>
+                          )}
                         </SelectContent>
                       </Select>
                       {form.formState.errors.match_number && (

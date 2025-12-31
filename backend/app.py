@@ -599,11 +599,26 @@ def backfill_ticket_match_data():
         # Ensure columns exist first
         ensure_ticket_columns_exist()
         
-        # Get all tickets that are missing teams or match_type
-        from sqlalchemy import or_, null
-        tickets_to_update = Ticket.query.filter(
-            or_(Ticket.teams == None, Ticket.teams == null(), Ticket.match_type == None, Ticket.match_type == null())
-        ).all()
+        # Get all tickets - check for None, empty string, or just whitespace
+        from sqlalchemy import or_, null, func
+        all_tickets = Ticket.query.all()
+        logger.info(f"Found {len(all_tickets)} total tickets to check")
+        
+        tickets_to_update = []
+        for ticket in all_tickets:
+            teams_value = getattr(ticket, 'teams', None)
+            match_type_value = getattr(ticket, 'match_type', None)
+            
+            # Check if teams or match_type is missing, None, empty, or just '-'
+            needs_update = (
+                teams_value is None or 
+                (isinstance(teams_value, str) and (teams_value.strip() == '' or teams_value.strip() == '-')) or
+                match_type_value is None or 
+                (isinstance(match_type_value, str) and (match_type_value.strip() == '' or match_type_value.strip() == '-'))
+            )
+            
+            if needs_update:
+                tickets_to_update.append(ticket)
         
         if not tickets_to_update:
             logger.info("All tickets already have teams and match_type data")
@@ -620,6 +635,7 @@ def backfill_ticket_match_data():
                 ticket.teams = match.teams
                 ticket.match_type = match.match_type
                 updated_count += 1
+                logger.debug(f"Updated ticket {ticket.id} (match {ticket.match_number}) with teams={match.teams}, match_type={match.match_type}")
             else:
                 logger.warning(f"Match {ticket.match_number} not found or missing data for ticket {ticket.id}, skipping")
                 skipped_count += 1
@@ -906,10 +922,10 @@ with app.app_context():
     try:
         db.create_all()
         
-        # Initialize match schedule data from CSV
+        # Initialize match schedule data from CSV (must run first)
         init_match_data()
         
-        # Backfill existing tickets with teams and match_type
+        # Backfill existing tickets with teams and match_type (runs after matches are loaded)
         backfill_ticket_match_data()
         
         # Create a default admin user if none exists
