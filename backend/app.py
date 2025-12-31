@@ -519,6 +519,40 @@ def init_match_data():
         import traceback
         logger.error(f"Traceback: {traceback.format_exc()}")
 
+def backfill_ticket_match_data():
+    """Backfill teams and match_type for existing tickets from Match table"""
+    try:
+        # Get all tickets that are missing teams or match_type
+        tickets_to_update = Ticket.query.filter(
+            (Ticket.teams == None) | (Ticket.match_type == None)
+        ).all()
+        
+        if not tickets_to_update:
+            logger.info("All tickets already have teams and match_type data")
+            return
+        
+        logger.info(f"Backfilling teams and match_type for {len(tickets_to_update)} tickets...")
+        updated_count = 0
+        
+        for ticket in tickets_to_update:
+            # Find the corresponding match
+            match = Match.query.filter_by(match_number=ticket.match_number).first()
+            if match:
+                ticket.teams = match.teams
+                ticket.match_type = match.match_type
+                updated_count += 1
+            else:
+                logger.warning(f"Match {ticket.match_number} not found for ticket {ticket.id}, skipping")
+        
+        db.session.commit()
+        logger.info(f"Backfilled {updated_count} tickets with teams and match_type data")
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error backfilling ticket data: {e}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+
 @app.route('/api/matches', methods=['GET'])
 def get_matches():
     """Get all FIFA 2026 matches for dropdown"""
@@ -789,6 +823,9 @@ with app.app_context():
         
         # Initialize match schedule data from CSV
         init_match_data()
+        
+        # Backfill existing tickets with teams and match_type
+        backfill_ticket_match_data()
         
         # Create a default admin user if none exists
         try:

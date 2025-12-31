@@ -84,10 +84,11 @@ export default function DashboardPage() {
   const uniqueMatchTypes = [...new Set(tickets.map(t => t.match_type).filter(Boolean))].sort();
   
   // Extract unique teams from tickets (parse "Team1 - Team2" format)
+  // Only include tickets that have teams data
   const uniqueTeams = [...new Set(
     tickets
+      .filter(t => t.teams) // Only process tickets with teams data
       .map(t => t.teams)
-      .filter(Boolean)
       .flatMap(teams => teams.split(' - ').map(team => team.trim()))
       .filter(team => team.length > 0)
   )].sort();
@@ -173,9 +174,11 @@ export default function DashboardPage() {
     const matchesVenue = venueFilter.length === 0 || venueFilter.includes(ticket.venue);
     const matchesCategory = categoryFilter.length === 0 || categoryFilter.includes(ticket.ticket_category);
     const matchesMatchNumber = matchNumberFilter.length === 0 || matchNumberFilter.includes(ticket.match_number);
-    const matchesMatchType = matchTypeFilter.length === 0 || (ticket.match_type && matchTypeFilter.includes(ticket.match_type));
+    // Match type filter: if filter is empty, show all. If filter has values, only show tickets with match_type that matches
+    const matchesMatchType = matchTypeFilter.length === 0 || 
+      (ticket.match_type && matchTypeFilter.includes(ticket.match_type));
     
-    // For teams filter, check if any selected team appears in the ticket's teams string
+    // Teams filter: if filter is empty, show all. If filter has values, only show tickets with teams that match
     const matchesTeams = teamsFilter.length === 0 || 
       (ticket.teams && teamsFilter.some(team => ticket.teams.toLowerCase().includes(team.toLowerCase())));
     
